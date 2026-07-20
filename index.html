@@ -731,7 +731,6 @@ select option {
       </div>
     </div>
 
-    <!-- ELIMINADA LA SECCIÓN REPETIDA "SEC-INGRESOS" QUE ESTABA AQUÍ PARA EVITAR DUPLICIDAD DE DOM -->
     <div id="sec-ingresos" class="page-section">
       <div class="section-header">
         <h1>Ingreso Manual de Almacén</h1>
@@ -793,6 +792,7 @@ select option {
       </div>
     </div>
 
+    <!-- MÓDULO DE INVENTARIO REAL RE-ESTRUCTURADO CON FILTRADO AVANZADO -->
     <div id="sec-inventario-real" class="page-section">
       <div class="section-header">
         <h1>Kárdex Central, Lotes y Fechas de Vencimiento</h1>
@@ -800,7 +800,22 @@ select option {
       </div>
       <div class="panel-card">
         <div class="panel-title"><i class="ri-filter-2-line"></i> Filtrar Stock Real y Alertas de Vencimiento Corto</div>
-        <input type="text" class="input-ctrl" id="inv-search" placeholder="Buscar producto en stock..." oninput="renderRealInventory()">
+        
+        <!-- Zona del Buscador Avanzado Estructurado -->
+        <div class="form-row" style="margin-bottom: 15px; align-items: flex-end;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-weight: 600;">Buscar por:</label>
+            <select id="inv-search-type" class="input-ctrl" onchange="toggleInventorySearchType()">
+              <option value="nombre" selected>Nombre / Descripción</option>
+              <option value="categoria">Categoría del Medicamento</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex: 2; margin-bottom: 0;" id="inv-search-field-container">
+            <!-- Renderizado Inicial por Nombre -->
+            <input type="text" class="input-ctrl" id="inv-search" placeholder="Escriba el nombre del producto en stock..." oninput="renderRealInventory()">
+          </div>
+        </div>
+
         <div class="table-wrapper">
           <table>
             <thead>
@@ -1102,12 +1117,8 @@ const DB = {
   set: (key, value) => localStorage.setItem(key, JSON.stringify(value))
 };
 
-// Guardar todo localmente de respaldo
-function saveEverythingLocally() {
-  // Sincronizador global para el localStorage si es requerido
-}
+function saveEverythingLocally() {}
 
-// Inicializar base de datos LocalStorage con datos semilla
 const initStorage = (key, initialValue) => {
   if (!localStorage.getItem(key)) DB.set(key, initialValue);
 };
@@ -1128,10 +1139,8 @@ initStorage('f_silenced_alerts', []);
 
 let cart = [];
 
-// Evento de carga de página global adaptado a rangos
 window.onload = function() {
   const todayString = new Date().toISOString().split('T')[0];
-  
   const startEl = document.getElementById('search-sale-start-date');
   const endEl = document.getElementById('search-sale-end-date');
   
@@ -1146,7 +1155,6 @@ window.onload = function() {
   }
 };
 
-// Cierre automático de buscadores flotantes si haces clic afuera
 document.addEventListener('click', function(e) {
   const posBox = document.getElementById('search-box');
   const ingBox = document.getElementById('ing-search-box');
@@ -1156,7 +1164,6 @@ document.addEventListener('click', function(e) {
   if (ingBox && e.target.id !== 'ing-search-input') ingBox.style.display = 'none';
   if (catBox && e.target.id !== 'catalog-search-input') catBox.style.display = 'none';
 });
-
 
 // ==========================================
 // 2. SEGURIDAD Y ACCESO (LOGIN)
@@ -1202,7 +1209,6 @@ function initSystem() {
   renderSimulation();
   renderSalesHistory();
 }
-
 
 // ==========================================
 // 3. MÓDULO POS: BUSCADOR Y VENTAS
@@ -1478,7 +1484,6 @@ function processSale() {
   }
 
   cart = [];
-  
   if (document.getElementById('sale-doc-type')) document.getElementById('sale-doc-type').value = 'BOLETA';
   if (document.getElementById("cli-doc")) document.getElementById("cli-doc").value = "";
   if (document.getElementById("cli-name")) document.getElementById("cli-name").value = "";
@@ -1491,7 +1496,6 @@ function processSale() {
   if (document.getElementById("tot-igv")) document.getElementById("tot-igv").innerText = "S/. 0.00";
   if (document.getElementById("tot-final")) document.getElementById("tot-final").innerText = "S/. 0.00";
   
-  saveEverythingLocally(); 
   initSystem();
 }
 
@@ -1532,9 +1536,7 @@ function openReceiptModalDirect(sale) {
   const modal = document.getElementById("receipt-modal");
   if (modal) {
     modal.style.display = "flex";
-    setTimeout(() => {
-      window.print();
-    }, 300);
+    setTimeout(() => { window.print(); }, 300);
   }
 }
 
@@ -1544,7 +1546,6 @@ function closeReceipt() {
   renderCart();
   initSystem();
 }
-
 
 // ==========================================
 // 4. HISTORIAL Y ARQUEO DE CAJA
@@ -1586,7 +1587,6 @@ function renderSalesHistory() {
   salesHistory.forEach((sale, index) => {
     if (sale.date >= startDate && sale.date <= endDate) {
       hasSales = true;
-      
       const numPrice = parseFloat(sale.total.replace("S/.", "").replace("S/", "").trim()) || 0;
       const esEliminada = sale.estado === "ELIMINADA";
 
@@ -1594,7 +1594,6 @@ function renderSalesHistory() {
         totalVentasEliminadas += numPrice;
       } else {
         totalVentasActivas += numPrice;
-
         if (sale.items && Array.isArray(sale.items)) {
           sale.items.forEach(item => {
             let qtyVendida = parseInt(item.qty) || 1;
@@ -1613,7 +1612,6 @@ function renderSalesHistory() {
               let costoCajaLista = parseFloat(pBase.cost) || 0;
               let unidadesPorCaja = parseInt(pBase.boxUnits) || 1;
               let unidadesPorBlister = parseInt(pBase.blisterUnits) || 10;
-
               let costoPorUnidadBase = costoCajaLista / unidadesPorCaja;
 
               if (modoVenta === "Caja") {
@@ -1624,7 +1622,6 @@ function renderSalesHistory() {
                 itemCostTotal = costoPorUnidadBase * qtyVendida;
               }
             }
-
             totalMargenGanancia += (ventaTotalReal - itemCostTotal);
           });
         }
@@ -1646,20 +1643,12 @@ function renderSalesHistory() {
         <td>${sale.date}<br><small style="color:var(--muted);">${sale.time}</small></td>
         <td><strong>${sale.client}</strong></td>
         <td style="font-size:0.8rem; color:#dcd7f5;">${productsHtml}</td>
-        <td>
-          <span style="font-weight:700; color: ${esEliminada ? 'var(--danger)' : 'var(--success)'};">
-            ${esEliminada ? '- ' : ''}${sale.total}
-          </span>
-        </td>
+        <td><span style="font-weight:700; color: ${esEliminada ? 'var(--danger)' : 'var(--success)'};">${esEliminada ? '- ' : ''}${sale.total}</span></td>
         <td>
           <div style="display: flex; gap: 4px;">
-            <button class="btn btn-primary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="reprintOldSaleByIndex(${index})">
-              <i class="ri-printer-line"></i>
-            </button>
+            <button class="btn btn-primary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="reprintOldSaleByIndex(${index})"><i class="ri-printer-line"></i></button>
             ${!esEliminada ? `
-              <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem; background: rgba(239, 68, 68, 0.2);" onclick="anularVentaVillasar(${index})">
-                <i class="ri-delete-bin-line"></i>
-              </button>
+              <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem; background: rgba(239, 68, 68, 0.2);" onclick="anularVentaVillasar(${index})"><i class="ri-delete-bin-line"></i></button>
             ` : `<span class="badge badge-alert-roja" style="font-size:0.7rem;">ANULADA</span>`}
           </div>
         </td>
@@ -1697,9 +1686,7 @@ function renderSalesHistory() {
 function reprintOldSaleByIndex(index) {
   let salesHistory = DB.get('f_sales', []);
   const selectedSale = salesHistory[index];
-  if (selectedSale) {
-    openReceiptModalDirect(selectedSale);
-  }
+  if (selectedSale) openReceiptModalDirect(selectedSale);
 }
 
 function anularVentaVillasar(index) {
@@ -1740,7 +1727,6 @@ function confirmSaleAnulation() {
     salesHistory[index].estado = "ELIMINADA";
     salesHistory[index].motivoAnulacion = reason;
     DB.set('f_sales', salesHistory);
-    
     alert("✅ Comprobante marcado como anulado en sistema.");
     closeDeleteModal();
     initSystem();
@@ -1750,7 +1736,6 @@ function confirmSaleAnulation() {
 function closeDeleteModal() {
   if (document.getElementById("delete-sale-modal")) document.getElementById("delete-sale-modal").style.display = "none";
 }
-
 
 // ==========================================
 // 5. GESTIÓN ALMACÉN & INGRESOS
@@ -1813,9 +1798,7 @@ function executeIngress() {
   if(pIndex === -1) return;
 
   let finalUnits = qty;
-  if (unitType === "Caja") {
-    finalUnits = qty * prods[pIndex].boxUnits;
-  }
+  if (unitType === "Caja") finalUnits = qty * prods[pIndex].boxUnits;
 
   prods[pIndex].cost = cost;
   prods[pIndex].costMode = costMode;
@@ -1844,20 +1827,37 @@ function executeIngress() {
   document.getElementById('ing-prod').value = '';
   document.getElementById('ing-selected-feedback').innerText = '';
   document.getElementById('ing-expiry').value = '';
-  
   initSystem();
 }
 
+// =========================================================================
+// 6. KÁRDEX, BUSCADOR POR TIPO (NOMBRE / CATEGORÍA) & ALERTAS VENCIMIENTO
+// =========================================================================
 
-// ==========================================
-// 6. KÁRDEX & ALERTAS DE VENCIMIENTO
-// ==========================================
+// FUNCIÓN CLAVE: Intercambia el campo de entrada entre texto (Nombre) o menú (Categoría)
+function toggleInventorySearchType() {
+  const type = document.getElementById('inv-search-type').value;
+  const container = document.getElementById('inv-search-field-container');
+  if (!container) return;
+
+  if (type === 'categoria') {
+    const cats = DB.get('f_cats', []);
+    let optionsHtml = `<option value="">-- Seleccione una Categoría para Filtrar --</option>`;
+    cats.forEach(c => {
+      optionsHtml += `<option value="${c}">${c}</option>`;
+    });
+    container.innerHTML = `<select id="inv-search-cat" class="input-ctrl" onchange="renderRealInventory()">${optionsHtml}</select>`;
+  } else {
+    container.innerHTML = `<input type="text" class="input-ctrl" id="inv-search" placeholder="Escriba el nombre del producto en stock..." oninput="renderRealInventory()">`;
+  }
+  renderRealInventory();
+}
+
 function checkExpiryStatus(expiryDateStr, lotId) {
   const silenced = DB.get('f_silenced_alerts', []);
   if (silenced.includes(lotId)) {
     return { styleClass: '', badge: '<span class="badge badge-secondary">Apagada</span>', hasAlert: false };
   }
-
   if (!expiryDateStr || expiryDateStr === 'S/V') {
     return { styleClass: '', badge: '—', hasAlert: false };
   }
@@ -1872,7 +1872,6 @@ function checkExpiryStatus(expiryDateStr, lotId) {
   } else if (daysDiff <= 180) {
     return { styleClass: 'alert-row-yellow', badge: '<span class="badge badge-alert-yellow">⚠️ Alerta Amarilla (&lt;6 Meses)</span>', hasAlert: true };
   }
-
   return { styleClass: '', badge: '<span class="badge badge-green">Vigente</span>', hasAlert: false };
 }
 
@@ -1889,7 +1888,7 @@ function renderRealInventory() {
   const tbody = document.getElementById('real-inventory-table-body');
   if(!tbody) return;
   
-  const query = document.getElementById('inv-search').value.toLowerCase().trim();
+  const searchType = document.getElementById('inv-search-type').value;
   const prods = DB.get('f_prods', []);
   const lots = DB.get('f_lots', []);
 
@@ -1898,13 +1897,27 @@ function renderRealInventory() {
     return;
   }
 
+  let queryName = "";
+  let queryCat = "";
+
+  if (searchType === 'categoria') {
+    const selectCat = document.getElementById('inv-search-cat');
+    queryCat = selectCat ? selectCat.value : "";
+  } else {
+    const inputName = document.getElementById('inv-search');
+    queryName = inputName ? inputName.value.toLowerCase().trim() : "";
+  }
+
   let html = "";
   lots.forEach(l => {
     const p = prods.find(x => x.id === l.prodId);
     if (!p) return;
 
-    if (query && !p.desc.toLowerCase().includes(query) && !l.code.toLowerCase().includes(query)) {
-      return;
+    // Lógica del motor de filtrado por Tipo Escogido
+    if (searchType === 'categoria') {
+      if (queryCat && p.cat !== queryCat) return; 
+    } else {
+      if (queryName && !p.desc.toLowerCase().includes(queryName) && !l.code.toLowerCase().includes(queryName)) return;
     }
 
     const alertStatus = checkExpiryStatus(l.expiry, l.id);
@@ -1912,7 +1925,10 @@ function renderRealInventory() {
     html += `
       <tr class="${alertStatus.styleClass}">
         <td><strong>${p.id}</strong><br><small class="badge" style="background:rgba(255,255,255,0.1);">${l.code}</small></td>
-        <td><span style="color:#fff; font-weight:600;">${p.desc}</span></td>
+        <td>
+          <span style="color:#fff; font-weight:600;">${p.desc}</span>
+          <br><small style="color:var(--p2); font-size:0.75rem;">Categoría: ${p.cat || 'General'}</small>
+        </td>
         <td><strong>${l.expiry}</strong></td>
         <td>${alertStatus.badge}</td>
         <td><span class="badge badge-purple">${l.stockUnits} uds</span></td>
@@ -1927,7 +1943,7 @@ function renderRealInventory() {
     `;
   });
 
-  tbody.innerHTML = html || `<tr><td colspan="6" style="text-align:center; color:var(--muted);">Sin resultados.</td></tr>`;
+  tbody.innerHTML = html || `<tr><td colspan="6" style="text-align:center; color:var(--muted);">Sin stock que coincida con la búsqueda.</td></tr>`;
 }
 
 function deleteLot(lotId) {
@@ -1938,7 +1954,6 @@ function deleteLot(lotId) {
     initSystem();
   }
 }
-
 
 // ==========================================
 // 7. EDICIÓN INTERNA CON AUTORIZACIÓN
@@ -1959,7 +1974,6 @@ function openEditModal(lotId) {
   if(document.getElementById('edit-auth-secret')) document.getElementById('edit-auth-secret').value = "";
   if(document.getElementById('edit-step-auth')) document.getElementById('edit-step-auth').style.display = "block";
   if(document.getElementById('edit-step-fields')) document.getElementById('edit-step-fields').style.display = "none";
-
   if(document.getElementById('edit-inventory-modal')) document.getElementById('edit-inventory-modal').style.display = "flex";
 }
 
@@ -2002,7 +2016,6 @@ function saveInventoryEdits() {
 function closeEditModal() {
   if(document.getElementById('edit-inventory-modal')) document.getElementById('edit-inventory-modal').style.display = "none";
 }
-
 
 // ==========================================
 // 8. REGISTROS, FORMULARIOS Y PRECIOS
@@ -2109,7 +2122,6 @@ function saveProduct() {
   document.getElementById('p-price-box').value = '0.00';
   document.getElementById('p-price-unit').value = '0.00';
   document.getElementById('p-cost').value = '0.00';
-
   initSystem();
 }
 
@@ -2150,7 +2162,6 @@ function loadProductToEditForm(pid) {
     document.getElementById('p-price-box').value = p.priceBox || 0;
     document.getElementById('p-price-unit').value = p.priceUnit || 0;
     document.getElementById('p-afecto-igv').checked = p.useIgv;
-    
     alert(`✏️ Modificando: ${p.desc}. Presione 'Registrar Medicamento' al finalizar para guardar.`);
   }
   document.getElementById('catalog-search-box').style.display = 'none';
@@ -2166,14 +2177,7 @@ function renderCatalog() {
   
   prods.forEach((prod, index) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${prod.id}</td>
-      <td>
-        <strong>${prod.desc}</strong>
-      </td>
-      <td>${prod.cat}</td>
-      <td>${prod.forma}</td>
-    `;
+    tr.innerHTML = `<td>${prod.id}</td><td><strong>${prod.desc}</strong></td><td>${prod.cat}</td><td>${prod.forma}</td>`;
     catalogBody.appendChild(tr);
   });
 }
@@ -2221,7 +2225,6 @@ function updatePriceRow(pid) {
   initSystem();
   alert("Precios actualizados.");
 }
-
 
 // ==========================================
 // 9. SIMULADOR DE PEDIDOS
@@ -2299,14 +2302,11 @@ function clearSimulation() {
   renderSimulation();
 }
 
-// =========================================================================
-// SISTEMA DE SEGURIDAD: EXPORTAR E IMPORTAR COPIAS DE RESPALDO (LOCALSTORAGE)
-// =========================================================================
-
-// 1. FUNCIÓN PARA DESCARGAR LA COPIA DE SEGURIDAD (Totalmente seguro, no borra nada)
+// ==========================================
+// 10. EXPORTAR E IMPORTAR COPIAS DE RESPALDO
+// ==========================================
 function exportData() {
   try {
-    // Capturamos el estado actual de todas tus tablas de datos
     const backupData = {
       f_prods: JSON.parse(localStorage.getItem('f_prods')) || [],
       f_lots: JSON.parse(localStorage.getItem('f_lots')) || [],
@@ -2317,22 +2317,15 @@ function exportData() {
       f_silenced_alerts: JSON.parse(localStorage.getItem('f_silenced_alerts')) || []
     };
 
-    // Validamos si al menos hay productos o ventas para respaldar
     if (backupData.f_prods.length === 0 && backupData.f_sales.length === 0) {
-      if (!confirm("El sistema detecta que la base de datos está vacía. ¿Aún así deseas descargar el archivo de respaldo?")) {
-        return;
-      }
+      if (!confirm("La base de datos está vacía. ¿Descargar respaldo de todas formas?")) return;
     }
 
-    // Convertimos los datos a un archivo de texto JSON
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const downloadAnchor = document.createElement('a');
-    
-    // Formateamos el nombre con la fecha del día actual
     const fecha = new Date().toISOString().slice(0, 10);
     downloadAnchor.setAttribute("href", dataStr);
     downloadAnchor.setAttribute("download", `Copia_Seguridad_Farma_${fecha}.json`);
-    
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -2341,7 +2334,6 @@ function exportData() {
   }
 }
 
-// 2. FUNCIÓN PARA RESTAURAR LA COPIA CUANDO SE PIERDAN LOS DATOS
 function importData(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -2350,40 +2342,28 @@ function importData(event) {
   reader.onload = function(e) {
     try {
       const importedData = JSON.parse(e.target.result);
-      
-      // VALIDACIÓN: Verificamos que el archivo realmente sea una copia de este sistema
       if (!importedData.hasOwnProperty('f_prods') || !importedData.hasOwnProperty('f_sales')) {
-        alert("❌ El archivo seleccionado no es válido o está dañado. No se reconoce como una copia de seguridad de la farmacia.");
+        alert("❌ Archivo de respaldo dañado o no compatible.");
         return;
       }
 
-      // DOBLE CONFIRMACIÓN para evitar accidentes fatales
-      const p1 = confirm("⚠️ ¡ADVERTENCIA CRÍTICA! ⚠️\n\nEstás a punto de restaurar una copia de seguridad externa. Esto reemplazará COMPLETAMENTE tus productos, ventas y lotes actuales por los del archivo.\n\n¿Estás seguro de que deseas continuar?");
-      
+      const p1 = confirm("⚠️ ¡ADVERTENCIA CRÍTICA! ⚠️\n\nEstás a punto de restaurar una copia externa. Se reemplazará todo el stock y ventas del local.\n\n¿Proceder?");
       if (p1) {
-        const p2 = confirm("🚨 ¿CONFIRMACIÓN FINAL? 🚨\n\nLos datos actuales que no hayas guardado se perderán definitivamente. ¿Proceder con la restauración?");
-        
-        if (p2) {
-          // Reemplazamos e insertamos los datos recuperados en el LocalStorage
-          localStorage.setItem('f_prods', JSON.stringify(importedData.f_prods));
-          localStorage.setItem('f_lots', JSON.stringify(importedData.f_lots || []));
-          localStorage.setItem('f_sales', JSON.stringify(importedData.f_sales || []));
-          localStorage.setItem('f_sim', JSON.stringify(importedData.f_sim || []));
-          localStorage.setItem('f_cats', JSON.stringify(importedData.f_cats || []));
-          localStorage.setItem('f_formas', JSON.stringify(importedData.f_formas || []));
-          localStorage.setItem('f_silenced_alerts', JSON.stringify(importedData.f_silenced_alerts || []));
-          
-          alert("✅ ¡Base de datos restaurada con éxito! El sistema se reiniciará para aplicar los cambios.");
-          window.location.reload(); // Recarga la página automáticamente
-        }
+        localStorage.setItem('f_prods', JSON.stringify(importedData.f_prods));
+        localStorage.setItem('f_lots', JSON.stringify(importedData.f_lots || []));
+        localStorage.setItem('f_sales', JSON.stringify(importedData.f_sales || []));
+        localStorage.setItem('f_sim', JSON.stringify(importedData.f_sim || []));
+        localStorage.setItem('f_cats', JSON.stringify(importedData.f_cats || []));
+        localStorage.setItem('f_formas', JSON.stringify(importedData.f_formas || []));
+        localStorage.setItem('f_silenced_alerts', JSON.stringify(importedData.f_silenced_alerts || []));
+        alert("✅ ¡Base de datos restaurada! El sistema se reiniciará.");
+        window.location.reload();
       }
     } catch (err) {
-      alert("❌ Error crítico al leer el archivo de respaldo: " + err.message);
+      alert("❌ Error crítico en lectura: " + err.message);
     }
   };
-  
   reader.readAsText(file);
-  // Limpiamos el input para permitir subir el mismo archivo consecutivamente si fuese necesario
   event.target.value = ''; 
 }
   </script>
