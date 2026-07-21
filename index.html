@@ -986,7 +986,7 @@ select option {
           <div class="table-wrapper">
             <table>
               <thead>
-                <tr><th>Medicamento</th><th>Pedido</th><th>Precio Est.</th><th>Total Est.</th></tr>
+                <tr><th>Medicamento</th><th>Pedido</th><th>Vencimiento Real</th><th>Total Est.</th></tr>
               </thead>
               <tbody id="simulation-table-body"></tbody>
             </table>
@@ -2168,6 +2168,121 @@ function loadProductToEditForm(pid) {
   document.getElementById('catalog-search-input').value = '';
 }
 
+// ==========================================
+// 9. SIMULADOR DE PEDIBOS (MODIFICADO)
+// ==========================================
+function renderSimulation() {
+  const tbody = document.getElementById('simulation-table-body');
+  const sim = DB.get('f_sim', []);
+  const prods = DB.get('f_prods', []);
+  if(!tbody) return;
+
+  if(sim.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted);">Sin pre-órdenes.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = sim.map((s, index) => {
+    const p = prods.find(x => x.id === s.prodId) || { desc: "—", priceBox: 0, priceUnit: 0 };
+    const priceEst = s.type === 'Caja' ? (p.priceBox || 0) : (p.priceUnit || 0);
+    
+    // Aseguramos que mantenga la consistencia si ya tenía una fecha asignada en caliente
+    const inputFechaStr = s.expiry ? s.expiry : "";
+
+    return `
+      <tr>
+        <td><strong>${p.desc}</strong></td>
+        <td>${s.qty} ${s.type}(s)</td>
+        <td>
+          <input type="date" class="input-ctrl" style="padding:4px; font-size:0.8rem; max-width:140px;" 
+            id="sim-expiry-${index}" 
+            value="${inputFechaStr}" 
+            onchange="updateSimulationExpiryDate(${index}, this.value)">
+        </td>
+        <td>S/. ${(priceEst * s.qty).toFixed(2)}</td>
+      </tr>`;
+  }).join('');
+}
+
+function updateSimulationExpiryDate(index, dateValue) {
+  let sim = DB.get('f_sim', []);
+  if(sim[index]) {
+    sim[index].expiry = dateValue;
+    DB.set('f_sim', sim);
+  }
+}
+
+function addToSimulation() {
+  const pid = document.getElementById('sim-prod') ? document.getElementById('sim-prod').value : '';
+  const qty = parseInt(document.getElementById('sim-qty') ? document.getElementById('sim-qty').value : '1') || 1;
+  const type = document.getElementById('sim-type') ? document.getElementById('sim-type').value : 'Caja';
+
+  let sim = DB.get('f_sim', []);
+  // Se inserta vacío para obligar al usuario a digitar la fecha real de la caja al recibirla
+  sim.push({ prodId: pid, qty: qty, type: type, expiry: "" });
+  DB.set('f_sim', sim);
+  renderSimulation();
+}
+
+function commitSimulation() {
+  let sim = DB.get('f_sim', []);
+  if(sim.length === 0) return;
+
+  // Validación: Comprobar que todas las filas tengan su fecha ingresada
+  let valid = true;
+  sim.forEach((s, idx) => {
+    if(!s.expiry) {
+      valid = false;
+    }
+  });
+
+  if(!valid) {
+    alert("⚠️ Por favor, complete la Fecha de Vencimiento de cada producto en la lista antes de subirlo al sistema.");
+    return;
+  }
+
+  let lots = DB.get('f_lots', []);
+  const prods = DB.get('f_prods', []);
+  const LOTE_DESTINO = "LOTE-VILLAZAR"; 
+
+  sim.forEach(s => {
+    const p = prods.find(x => x.id === s.prodId);
+    if(!p) return;
+
+    let totalUnitsCalculated = s.qty;
+    if(s.type === 'Caja') totalUnitsCalculated = s.qty * p.boxUnits;
+
+    // Ahora buscamos que coincida el producto, el lote e idealmente la misma fecha de vencimiento
+    let existingSimLot = lots.find(l => 
+      l.prodId === s.prodId && 
+      l.code.toUpperCase().trim() === LOTE_DESTINO.toUpperCase().trim() &&
+      l.expiry === s.expiry
+    );
+
+    if (existingSimLot) {
+      existingSimLot.stockUnits += totalUnitsCalculated;
+    } else {
+      lots.push({
+        id: "L-SIM-" + Date.now() + Math.floor(Math.random() * 100),
+        prodId: s.prodId,
+        code: LOTE_DESTINO.toUpperCase().trim(),
+        expiry: s.expiry, // Guarda con la fecha ingresada manualmente
+        stockUnits: totalUnitsCalculated
+      });
+    }
+  });
+
+  DB.set('f_lots', lots);
+  DB.set('f_sim', []);
+  alert("✅ ¡Pedido verificado e ingresado al Inventario Real con sus fechas de vencimiento!");
+  initSystem();
+}
+
+function clearSimulation() {
+  DB.set('f_sim', []);
+  renderSimulation();
+}
+
 function renderCatalog() {
   const catalogBody = document.getElementById("catalog-table-body");
   if (!catalogBody) return;
@@ -2224,82 +2339,6 @@ function updatePriceRow(pid) {
   DB.set('f_prods', prods);
   initSystem();
   alert("Precios actualizados.");
-}
-
-// ==========================================
-// 9. SIMULADOR DE PEDIDOS
-// ==========================================
-function renderSimulation() {
-  const tbody = document.getElementById('simulation-table-body');
-  const sim = DB.get('f_sim', []);
-  const prods = DB.get('f_prods', []);
-  if(!tbody) return;
-
-  if(sim.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted);">Sin pre-órdenes.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = sim.map((s) => {
-    const p = prods.find(x => x.id === s.prodId) || { desc: "—", priceBox: 0, priceUnit: 0 };
-    const priceEst = s.type === 'Caja' ? (p.priceBox || 0) : (p.priceUnit || 0);
-    return `<tr><td><strong>${p.desc}</strong></td><td>${s.qty} ${s.type}(s)</td><td>S/. ${priceEst.toFixed(2)}</td><td>S/. ${(priceEst * s.qty).toFixed(2)}</td></tr>`;
-  }).join('');
-}
-
-function addToSimulation() {
-  const pid = document.getElementById('sim-prod') ? document.getElementById('sim-prod').value : '';
-  const qty = parseInt(document.getElementById('sim-qty') ? document.getElementById('sim-qty').value : '1') || 1;
-  const type = document.getElementById('sim-type') ? document.getElementById('sim-type').value : 'Caja';
-
-  let sim = DB.get('f_sim', []);
-  sim.push({ prodId: pid, qty: qty, type: type });
-  DB.set('f_sim', sim);
-  renderSimulation();
-}
-
-function commitSimulation() {
-  let sim = DB.get('f_sim', []);
-  if(sim.length === 0) return;
-
-  let lots = DB.get('f_lots', []);
-  const prods = DB.get('f_prods', []);
-  const LOTE_DESTINO = "LOTE-VILLAZAR"; 
-
-  sim.forEach(s => {
-    const p = prods.find(x => x.id === s.prodId);
-    if(!p) return;
-
-    let totalUnitsCalculated = s.qty;
-    if(s.type === 'Caja') totalUnitsCalculated = s.qty * p.boxUnits;
-
-    let existingSimLot = lots.find(l => 
-      l.prodId === s.prodId && 
-      l.code.toUpperCase().trim() === LOTE_DESTINO.toUpperCase().trim()
-    );
-
-    if (existingSimLot) {
-      existingSimLot.stockUnits += totalUnitsCalculated;
-    } else {
-      lots.push({
-        id: "L-SIM-" + Date.now() + Math.floor(Math.random() * 100),
-        prodId: s.prodId,
-        code: LOTE_DESTINO.toUpperCase().trim(),
-        expiry: "2026-12-31",
-        stockUnits: totalUnitsCalculated
-      });
-    }
-  });
-
-  DB.set('f_lots', lots);
-  DB.set('f_sim', []);
-  alert("Pedido simulado cargado e integrado al Inventario.");
-  initSystem();
-}
-
-function clearSimulation() {
-  DB.set('f_sim', []);
-  renderSimulation();
 }
 
 // ==========================================
