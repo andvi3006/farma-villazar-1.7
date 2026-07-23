@@ -525,6 +525,23 @@ select option {
   background-color: #160a28 !important; /* Mismo tono oscuro */
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.9) !important; /* Sombra pronunciada para dar efecto de flotado */
 }
+/* Estado ACTIVO para el botón de Efectivo */
+#btn-pay-efectivo.active {
+  background: rgba(16, 185, 129, 0.25) !important;
+  border: 2px solid #10b981 !important;
+  color: #34d399 !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  font-weight: bold;
+}
+
+/* Estado ACTIVO para el botón de Yape / Plin */
+#btn-pay-yape.active {
+  background: rgba(0, 213, 255, 0.25) !important;
+  border: 2px solid #00d5ff !important;
+  color: #00d5ff !important;
+  box-shadow: 0 0 12px rgba(0, 213, 255, 0.4);
+  font-weight: bold;
+}
   </style>
 </head>
 <body>
@@ -672,6 +689,18 @@ select option {
             <div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>IGV (18%):</span><span id="tot-igv">S/. 0.00</span></div>
             <hr style="border-color:var(--border); margin:12px 0;">
             <div style="display:flex; justify-content:space-between; font-size:1.3rem; font-weight:700; color:#fff;"><span>TOTAL:</span><span id="tot-final">S/. 0.00</span></div>
+            <!-- Selector de Método de Pago -->
+            <div class="payment-method-container my-3">
+              <label class="form-label fw-bold small text-muted text-uppercase d-block mb-2">Método de Pago</label>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-success flex-fill payment-btn active" id="btn-pay-efectivo" onclick="setPaymentMethod('efectivo')">
+                  💵 Efectivo
+                </button>
+                <button type="button" class="btn btn-outline-primary flex-fill payment-btn" id="btn-pay-yape" onclick="setPaymentMethod('yape')">
+                  📱 Yape / Plin
+                </button>
+              </div>
+            </div>
             <button class="btn btn-success" style="width:100%; margin-top:15px; justify-content:center; padding:0.9rem;" onclick="processSale()"><i class="ri-printer-line"></i> Grabar e Imprimir Venta</button>
           </div>
         </div>
@@ -1138,6 +1167,23 @@ initStorage('f_sales', []);
 initStorage('f_silenced_alerts', []);
 
 let cart = [];
+let selectedPaymentMethod = 'efectivo'; // Estado por defecto
+
+function setPaymentMethod(method) {
+  selectedPaymentMethod = method;
+  const btnEfectivo = document.getElementById('btn-pay-efectivo');
+  const btnYape = document.getElementById('btn-pay-yape');
+  
+  if (btnEfectivo && btnYape) {
+    if (method === 'efectivo') {
+      btnEfectivo.classList.add('active');
+      btnYape.classList.remove('active');
+    } else {
+      btnYape.classList.add('active');
+      btnEfectivo.classList.remove('active');
+    }
+  }
+}
 
 window.onload = function() {
   const now = new Date();
@@ -1578,6 +1624,7 @@ function processSale() {
     subtotal: subtotalFinal,
     igv: igvFinal,
     total: totalFinal,
+    metodoPago: selectedPaymentMethod,
     estado: "ACTIVA"
   };
 
@@ -1596,7 +1643,8 @@ function processSale() {
   if (document.getElementById("cli-doc")) document.getElementById("cli-doc").value = "";
   if (document.getElementById("cli-name")) document.getElementById("cli-name").value = "";
   if (document.getElementById("cli-address")) document.getElementById("cli-address").value = "";
-  
+
+  setPaymentMethod('efectivo');
   handleDocTypeChange();
   
   tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted);">La lista está vacía. Seleccione un producto arriba y agréguelo.</td></tr>`;
@@ -1690,6 +1738,8 @@ function renderSalesHistory() {
   let totalVentasActivas = 0;
   let totalVentasEliminadas = 0;
   let totalMargenGanancia = 0;
+  let totalEfectivo = 0;
+  let totalAplicativo = 0;
   let hasSales = false;
 
   salesHistory.forEach((sale, index) => {
@@ -1697,11 +1747,21 @@ function renderSalesHistory() {
       hasSales = true;
       const numPrice = parseFloat(sale.total.replace("S/.", "").replace("S/", "").trim()) || 0;
       const esEliminada = sale.estado === "ELIMINADA";
+      const metodo = sale.metodoPago || "efectivo"; // Compatibilidad con ventas previas
 
       if (esEliminada) {
         totalVentasEliminadas += numPrice;
       } else {
         totalVentasActivas += numPrice;
+
+        // Suma por método de pago individual
+        if (metodo === "yape" || metodo === "aplicativo") {
+          totalAplicativo += numPrice;
+        } else {
+          totalEfectivo += numPrice;
+        }
+
+        // Cálculo de margen de ganancia
         if (sale.items && Array.isArray(sale.items)) {
           sale.items.forEach(item => {
             let qtyVendida = parseInt(item.qty) || 1;
@@ -1746,8 +1806,15 @@ function renderSalesHistory() {
         tr.style.borderLeft = "4px solid var(--danger)";
       }
 
+      const badgeMetodo = (metodo === 'yape' || metodo === 'aplicativo')
+        ? '<span class="badge" style="background:rgba(0,213,255,0.15); color:#00d5ff; border:1px solid rgba(0,213,255,0.3); margin-top:3px;">📱 Yape/Plin</span>'
+        : '<span class="badge" style="background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); margin-top:3px;">💵 Efectivo</span>';
+
       tr.innerHTML = `
-        <td><strong style="${esEliminada ? 'text-decoration: line-through; color: var(--danger);' : ''}">${sale.ticket}</strong></td>
+        <td>
+          <strong style="${esEliminada ? 'text-decoration: line-through; color: var(--danger);' : ''}">${sale.ticket}</strong><br>
+          ${badgeMetodo}
+        </td>
         <td>${sale.date}<br><small style="color:var(--muted);">${sale.time}</small></td>
         <td><strong>${sale.client}</strong></td>
         <td style="font-size:0.8rem; color:#dcd7f5;">${productsHtml}</td>
@@ -1772,18 +1839,26 @@ function renderSalesHistory() {
   } else {
     if (closureTotalAmountEl) {
       closureTotalAmountEl.innerHTML = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 10px; text-align: left;">
-          <div style="background: rgba(16, 185, 129, 0.12); padding: 12px; border-radius: 6px; border-left: 4px solid var(--success);">
-            <span style="font-size:0.78rem; color:#a1a1aa; display:block; font-weight:600;">VENTAS NETAS</span>
-            <span style="font-size:1.3rem; font-weight:800; color:var(--success);">S/. ${totalVentasActivas.toFixed(2)}</span>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 10px; text-align: left;">
+          <div style="background: rgba(16, 185, 129, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid var(--success);">
+            <span style="font-size:0.75rem; color:#a1a1aa; display:block; font-weight:600;">💵 EFECTIVO EN CAJA</span>
+            <span style="font-size:1.2rem; font-weight:800; color:var(--success);">S/. ${totalEfectivo.toFixed(2)}</span>
           </div>
-          <div style="background: rgba(239, 68, 68, 0.12); padding: 12px; border-radius: 6px; border-left: 4px solid var(--danger);">
-            <span style="font-size:0.78rem; color:#a1a1aa; display:block; font-weight:600;">COMPROBANTES ANULADOS</span>
-            <span style="font-size:1.3rem; font-weight:800; color:var(--danger);">S/. ${totalVentasEliminadas.toFixed(2)}</span>
+          <div style="background: rgba(0, 213, 255, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid #00d5ff;">
+            <span style="font-size:0.75rem; color:#a1a1aa; display:block; font-weight:600;">📱 YAPE / APLICATIVO</span>
+            <span style="font-size:1.2rem; font-weight:800; color:#00d5ff;">S/. ${totalAplicativo.toFixed(2)}</span>
           </div>
-          <div style="background: rgba(0, 213, 255, 0.12); padding: 12px; border-radius: 6px; border-left: 4px solid #00d5ff;">
-            <span style="font-size:0.78rem; color:#a1a1aa; display:block; font-weight:600;">MARGEN ESTIMADO</span>
-            <span style="font-size:1.3rem; font-weight:800; color:#00d5ff;">S/. ${totalMargenGanancia.toFixed(2)}</span>
+          <div style="background: rgba(168, 85, 247, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid var(--p3);">
+            <span style="font-size:0.75rem; color:#a1a1aa; display:block; font-weight:600;">💰 VENTAS NETAS TOTALES</span>
+            <span style="font-size:1.2rem; font-weight:800; color:var(--p3);">S/. ${totalVentasActivas.toFixed(2)}</span>
+          </div>
+          <div style="background: rgba(239, 68, 68, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid var(--danger);">
+            <span style="font-size:0.75rem; color:#a1a1aa; display:block; font-weight:600;">❌ ANULADOS</span>
+            <span style="font-size:1.2rem; font-weight:800; color:var(--danger);">S/. ${totalVentasEliminadas.toFixed(2)}</span>
+          </div>
+          <div style="background: rgba(245, 158, 11, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid var(--warning);">
+            <span style="font-size:0.75rem; color:#a1a1aa; display:block; font-weight:600;">📈 MARGEN ESTIMADO</span>
+            <span style="font-size:1.2rem; font-weight:800; color:var(--warning);">S/. ${totalMargenGanancia.toFixed(2)}</span>
           </div>
         </div>
       `;
