@@ -1140,7 +1140,12 @@ initStorage('f_silenced_alerts', []);
 let cart = [];
 
 window.onload = function() {
-  const todayString = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const todayString = `${year}-${month}-${day}`;
+
   const startEl = document.getElementById('search-sale-start-date');
   const endEl = document.getElementById('search-sale-end-date');
   
@@ -1391,7 +1396,12 @@ function processSale() {
   
   const now = new Date();
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const dateStr = now.toISOString().split('T')[0];
+  
+  // Extrae el año, mes y día respetando la HORA LOCAL del equipo (no la UTC)
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
 
   let prods = DB.get('f_prods', []);
   let lots = DB.get('f_lots', []);
