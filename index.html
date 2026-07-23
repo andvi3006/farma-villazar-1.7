@@ -587,7 +587,7 @@ select option {
           <div class="panel-card">
             <div class="panel-title"><i class="ri-search-line"></i> 1. Buscar Medicamento</div>
             <div class="search-container">
-              <input type="text" class="input-ctrl" id="pos-search" placeholder="Escriba el nombre del medicamento para seleccionarlo..." oninput="handleSearch(this.value)">
+              <input type="text" class="input-ctrl" id="pos-search" placeholder="Escriba el nombre del medicamento para seleccionarlo..." oninput="handleSearch(this.value)" onkeydown="handleSearchKeyPress(event)">
               <div class="predictive-results" id="search-box"></div>
             </div>
 
@@ -1219,31 +1219,79 @@ function initSystem() {
 // 3. MÓDULO POS: BUSCADOR Y VENTAS
 // ==========================================
 function handleSearch(val) {
-  const box = document.getElementById('search-box');
-  if (!box) return;
-  if (!val.trim()) { box.style.display = 'none'; return; }
-
+  const q = val.toLowerCase().trim();
   const prods = DB.get('f_prods', []);
-  const query = val.toLowerCase();
-  
+  const sugBox = document.getElementById('search-box'); // Corregido: id="search-box"
+
+  if (!sugBox) return;
+
+  // 1. Si el input está vacío, no mostrar sugerencias
+  if (!q) {
+    sugBox.style.display = 'none';
+    return;
+  }
+
+  // 2. Buscar por NOMBRE (desc) O por CÓDIGO DE BARRAS (barcode)
   const filtered = prods.filter(p => 
-    p.desc.toLowerCase().includes(query) || 
-    (p.barcode && p.barcode.includes(query))
+    (p.desc && p.desc.toLowerCase().includes(q)) || 
+    (p.barcode && p.barcode.toLowerCase().includes(q))
   );
 
+  // 3. Renderizar resultados sugeridos
+  sugBox.innerHTML = '';
+
   if (filtered.length === 0) {
-    box.innerHTML = `<div class="predictive-item" style="color:var(--muted); padding:10px;">Sin resultados en vademécum...</div>`;
-  } else {
-    box.innerHTML = filtered.map(p => `
-      <div class="predictive-item" onclick="selectProductToConfigure('${p.id}')">
-        <span style="font-weight:600; color:#fff;">${p.desc}</span>
-        <span style="float:right;" class="badge badge-purple">${p.forma}</span>
-      </div>
-    `).join('');
+    sugBox.style.display = 'none';
+    return;
   }
-  box.style.display = 'block';
+
+  filtered.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'predictive-item'; // Mantiene tus estilos CSS
+    
+    // Calcular el precio de venta sugerido
+    const precio = (p.priceUnit || p.priceBox || 0).toFixed(2);
+    const codeInfo = p.barcode ? ` [Código: ${p.barcode}]` : '';
+    
+    item.innerHTML = `<span><strong>${p.desc}</strong>${codeInfo}</span> <span style="float:right;">S/. ${precio}</span>`;
+    
+    item.onclick = () => {
+      selectProductToConfigure(p.id);
+      sugBox.style.display = 'none';
+      document.getElementById('pos-search').value = '';
+    };
+    sugBox.appendChild(item);
+  });
+
+  sugBox.style.display = 'block';
 }
 
+function handleSearchKeyPress(event) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    
+    const query = event.target.value.toLowerCase().trim();
+    if (!query) return;
+
+    const prods = DB.get('f_prods', []);
+
+    // Busca coincidencia por Código de Barras o por Nombre
+    const match = prods.find(p => 
+      (p.barcode && p.barcode.toLowerCase() === query) || 
+      (p.desc && p.desc.toLowerCase() === query)
+    );
+
+    if (match) {
+      const sugBox = document.getElementById('search-box');
+      if (sugBox) sugBox.style.display = 'none';
+      
+      selectProductToConfigure(match.id);
+      event.target.value = '';
+    } else {
+      alert('⚠️ Producto o código de barras no encontrado.');
+    }
+  }
+}
 function selectProductToConfigure(pid) {
   if (document.getElementById('search-box')) document.getElementById('search-box').style.display = 'none';
   if (document.getElementById('pos-search')) document.getElementById('pos-search').value = '';
