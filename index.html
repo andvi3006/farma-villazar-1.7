@@ -414,41 +414,110 @@ tr:hover td { background: rgb(78, 6, 134); }
   background-color: var(--p3);
 }
 /* --- TICKET / MODAL RECEIPT --- */
+/* --- TICKET / MODAL RECEIPT COMPACTO Y MODERNO --- */
 .receipt-backdrop { 
   position: fixed; 
   inset: 0; 
-  background: rgba(0,0,0,0.6); 
+  background: rgba(0,0,0,0.65); 
   backdrop-filter: blur(5px); 
   z-index: 2000; 
   display: none; 
   align-items: center; 
   justify-content: center; 
-  padding: 20px; 
+  padding: 10px; 
 }
 
 .receipt-paper { 
-  background: #fdfdfd; 
-  color: #222; 
-  padding: 1.75rem; 
-  border-radius: 12px; /* Un toque moderno en lugar del corte recto rígido */
+  background: #ffffff; 
+  color: #111111; 
+  padding: 1rem 1.2rem; 
+  border-radius: 8px; 
   width: 100%; 
-  max-width: 360px; 
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4); 
-  font-family: 'Courier New', Courier, monospace; 
-  font-size: 0.8rem; 
+  max-width: 300px; /* Ancho ajustado ideal para ticket térmico */
+  box-shadow: 0 15px 35px rgba(0,0,0,0.5); 
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; 
+  font-size: 0.75rem; 
+  line-height: 1.25;
+}
+
+.receipt-header {
+  text-align: center;
+  margin-bottom: 8px;
 }
 
 .receipt-paper h3 { 
+  font-family: 'Syne', sans-serif;
   text-align: center; 
-  margin-bottom: 4px; 
-  font-size: 1.1rem; 
-  font-weight: 700; 
+  font-size: 1.15rem; 
+  font-weight: 800; 
   color: #000; 
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
 }
 
-.receipt-paper p { text-align: center; margin-bottom: 2px; }
-.receipt-line { border-top: 1px dashed #bbb; margin: 8px 0; }
-.receipt-totals { font-weight: bold; font-size: 0.9rem; color: #000; }
+.receipt-paper p { 
+  text-align: center; 
+  margin-bottom: 2px; 
+  font-size: 0.72rem;
+  color: #444;
+}
+
+.receipt-info {
+  margin: 6px 0;
+  font-size: 0.73rem;
+  line-height: 1.3;
+}
+
+.receipt-info p {
+  text-align: left;
+  color: #111;
+}
+
+.receipt-line { 
+  border-top: 1px dashed #777; 
+  margin: 6px 0; 
+}
+
+.receipt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.73rem;
+  margin: 4px 0;
+}
+
+.receipt-table th {
+  background: none;
+  color: #000;
+  padding: 3px 0;
+  font-weight: 700;
+  border-bottom: 1px dashed #777;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+
+.receipt-table td {
+  padding: 3px 0;
+  color: #111;
+  border-bottom: none;
+  vertical-align: top;
+}
+
+.receipt-totals-row { 
+  display: flex; 
+  justify-content: space-between; 
+  font-size: 0.75rem;
+  margin-top: 2px;
+  color: #333;
+}
+
+.receipt-totals-row.grand-total { 
+  font-weight: 800; 
+  font-size: 0.95rem; 
+  color: #000; 
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed #777;
+}
 
 /* --- INLINE ADDERS --- */
 .inline-adder { display: flex; gap: 6px; margin-top: 6px; }
@@ -541,6 +610,96 @@ select option {
   color: #00d5ff !important;
   box-shadow: 0 0 12px rgba(0, 213, 255, 0.4);
   font-weight: bold;
+}
+
+/* --- COLOR AZUL OSCURO GLOBAL PARA LA BOLETA Y TICKET --- */
+#receipt-modal,
+#receipt-modal *,
+.receipt-paper,
+.receipt-paper h3,
+.receipt-paper p,
+.receipt-paper span,
+.receipt-info,
+.receipt-info p,
+.receipt-table,
+.receipt-table th,
+.receipt-table td,
+.receipt-table small,
+.receipt-totals-row,
+.receipt-totals-row.grand-total {
+  color: #050b30 !important; /* Azul oscuro constante */
+}
+
+/* Forzar que bordes y líneas divisorias sean azul oscuro */
+.receipt-line,
+.receipt-table th,
+.receipt-totals-row.grand-total {
+  border-color: #050b30 !important;
+}
+
+/* --- REGLAS DE IMPRESIÓN --- */
+@media print {
+  /* Ocultar todo el contenido de la web */
+  body > * {
+    display: none !important;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Mostrar solo la boleta pegada arriba */
+  #receipt-modal {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .receipt-paper {
+    position: relative !important;
+    margin: 0 !important;
+    padding: 4mm !important;
+    width: 80mm !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+  }
+
+  /* Ocultar botones de cierre/impresión */
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* --- ESTILO DEL LOGO EN EL TICKET --- */
+.receipt-logo {
+  max-width: 180px; /* Tamaño ideal para ticket de 80mm */
+  height: auto;
+  display: block;
+  margin: 0 auto 6px auto;
+  object-fit: contain;
+}
+
+/* Asegurar que la imagen se mantenga visible al imprimir */
+@media print {
+  .receipt-logo {
+    max-width: 160px !important;
+    display: block !important;
+    visibility: visible !important;
+  }
 }
   </style>
 </head>
@@ -1030,36 +1189,58 @@ select option {
 
   </div>
 
-  <div class="receipt-backdrop" id="receipt-modal">
+<div class="receipt-backdrop" id="receipt-modal">
     <div class="receipt-paper">
-      <h3>f@rmaVillaZar</h3>
-      <p>RUC: 20765432101</p>
-      <p>Jr. Las Azucenas 452 - Lima</p>
+        <div class="receipt-header">
+            <!-- Reemplaza "logo-botica.jpg" por la ruta donde guardaste la imagen de tu logo -->
+            <img src="botica.jpg" alt="Botica Villazar" class="receipt-logo">
+            <p style="font-weight: 600; margin-top: 4px;">RUC: 1072257066</p>
+            <p>Calle Las Palmeras D 02A - El Paraíso de Jicamarca</p>
+        </div>
+
       <div class="receipt-line"></div>
-      <p style="text-align:left; font-weight:bold;" id="rec-ticket-num">COMPROBANTE: </p>
-      <p style="text-align:left;" id="rec-date">FECHA: </p>
-      <p style="text-align:left;" id="rec-doc">DNI/RUC: </p>
-      <p style="text-align:left;" id="rec-cli">CLIENTE: </p>
-      <p style="text-align:left;" id="rec-address">DIRECCIÓN: </p>
+
+      <div class="receipt-info">
+        <p style="font-weight:700;" id="rec-ticket-num">COMPROBANTE: </p>
+        <p id="rec-date">FECHA: </p>
+        <p id="rec-doc">DNi </p>
+        <p id="rec-cli">CLIENTE: </p>
+        <p id="rec-address">DIRECCIÓN: </p>
+      </div>
+
       <div class="receipt-line"></div>
-      <table style="width:100%; color:#000; font-family:monospace; font-size:0.8rem;">
+
+      <table class="receipt-table">
         <thead>
-          <tr style="border-bottom:1px dashed #333;">
-            <th style="background:none; color:#000; padding:4px 0; text-align:left;">Item</th>
-            <th style="background:none; color:#000; padding:4px 0; text-align:right;">Cant</th>
-            <th style="background:none; color:#000; padding:4px 0; text-align:right;">Total</th>
+          <tr>
+            <th style="text-align:left; width: 55%;">DESCRIPCIÓN</th>
+            <th style="text-align:center; width: 15%;">CANT</th>
+            <th style="text-align:right; width: 30%;">TOTAL</th>
           </tr>
         </thead>
         <tbody id="receipt-items-body"></tbody>
       </table>
+
       <div class="receipt-line"></div>
-      <div class="receipt-totals" style="display:flex; justify-content:space-between;"><span>SUBTOTAL:</span><span id="rec-sub">S/. 0.00</span></div>
-      <div class="receipt-totals" style="display:flex; justify-content:space-between;"><span>IGV (18%):</span><span id="rec-igv">S/. 0.00</span></div>
-      <div class="receipt-totals" style="display:flex; justify-content:space-between; font-size:1rem; margin-top:4px;"><span>TOTAL COMPRA:</span><span id="rec-total">S/. 0.00</span></div>
+
+      <div class="receipt-totals-row">
+        <span>SUBTOTAL:</span>
+        <span id="rec-sub">S/. 0.00</span>
+      </div>
+      <div class="receipt-totals-row">
+        <span>IGV (18%):</span>
+        <span id="rec-igv">S/. 0.00</span>
+      </div>
+      <div class="receipt-totals-row grand-total">
+        <span>TOTAL A PAGAR:</span>
+        <span id="rec-total">S/. 0.00</span>
+      </div>
+
       <div class="receipt-line"></div>
-      <p style="text-align:center; font-weight:bold; margin-top:10px;">¡Gracias por su preferencia!</p>
-      <div style="text-align:center; margin-top:20px;">
-        <button class="btn btn-primary" style="font-family:sans-serif;" onclick="closeReceipt()">Cerrar e Imprimir</button>
+      <p style="text-align:center; font-weight:700; margin-top:6px; font-size: 0.72rem;">¡Gracias por su compra!</p>
+      
+      <div style="text-align:center; margin-top:12px;" class="no-print">
+        <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 6px 12px; font-size: 0.8rem;" onclick="closeReceipt()">Cerrar e Imprimir</button>
       </div>
     </div>
   </div>
@@ -1656,44 +1837,43 @@ function processSale() {
 }
 
 function openReceiptModalDirect(sale) {
-  const recTicket = document.getElementById("rec-ticket-num");
-  const recDate = document.getElementById("rec-date");
-  const recDoc = document.getElementById("rec-doc");
-  const recCli = document.getElementById("rec-cli");
-  const recAddress = document.getElementById("rec-address");
-  const recItems = document.getElementById("receipt-items-body");
-
-  if (recTicket) recTicket.innerText = `${sale.tipoComprobante || 'BOLETA'}: ${sale.ticket}`;
-  if (recDate) recDate.innerText = `FECHA: ${sale.date}  ${sale.time}`;
-  if (recDoc) {
-    const labelDoc = sale.tipoComprobante === 'FACTURA' ? 'RUC' : 'DNI';
-    recDoc.innerText = `${labelDoc}: ${sale.doc || 'S/D'}`;
-  }
-  if (recCli) recCli.innerText = `CLIENTE: ${sale.client || 'PÚBLICO GENERAL'}`;
-  if (recAddress) recAddress.innerText = `DIRECCIÓN: ${sale.address || 'S/D'}`;
-
-  if (recItems) {
-    recItems.innerHTML = "";
-    sale.items.forEach(item => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td style="padding:4px 0; color:#000; text-align:left;">${item.name || "Producto"} (${item.mode || 'U'})</td>
-        <td style="text-align:right; padding:4px 0; color:#000;">${item.qty}</td>
-        <td style="text-align:right; padding:4px 0; color:#000;">${item.subtotal || '0.00'}</td>
-      `;
-      recItems.appendChild(tr);
-    });
-  }
-
-  if (document.getElementById("rec-sub")) document.getElementById("rec-sub").innerText = sale.subtotal || "S/. 0.00";
-  if (document.getElementById("rec-igv")) document.getElementById("rec-igv").innerText = sale.igv || "S/. 0.00";
-  if (document.getElementById("rec-total")) document.getElementById("rec-total").innerText = sale.total;
-
   const modal = document.getElementById("receipt-modal");
-  if (modal) {
-    modal.style.display = "flex";
-    setTimeout(() => { window.print(); }, 300);
-  }
+  if (!modal) return;
+
+  // Llenado de datos (mantén el código existente)...
+  document.getElementById("rec-ticket-num").innerText = `${sale.tipoComprobante || 'BOLETA'}: ${sale.ticket}`;
+  document.getElementById("rec-date").innerText = `FECHA: ${sale.date} ${sale.time}`;
+  document.getElementById("rec-doc").innerText = `${sale.tipoComprobante === 'FACTURA' ? 'RUC' : 'DNI/RUC'}: ${sale.doc || 'S/D'}`;
+  document.getElementById("rec-cli").innerText = `CLIENTE: ${sale.client || 'PÚBLICO GENERAL'}`;
+  document.getElementById("rec-address").innerText = `DIR: ${sale.address || 'S/D'}`;
+
+  const recItems = document.getElementById("receipt-items-body");
+  recItems.innerHTML = "";
+  // Dentro de openReceiptModalDirect(), al agregar los productos:
+    sale.items.forEach(item => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td style="text-align:left; font-weight:500; color:#050b30;">
+            ${item.name || "Producto"}<br>
+            <small style="color:#1b2a60; font-size: 0.65rem;">${item.mode || 'U'} -> ${item.price}</small>
+            </td>
+            <td style="text-align:center; font-weight:700; color:#050b30;">${item.qty}</td>
+            <td style="text-align:right; font-weight:700; color:#050b30;">${item.subtotal || '0.00'}</td>
+        `;
+        recItems.appendChild(tr);
+    });
+
+  document.getElementById("rec-sub").innerText = sale.subtotal || "S/. 0.00";
+  document.getElementById("rec-igv").innerText = sale.igv || "S/. 0.00";
+  document.getElementById("rec-total").innerText = sale.total;
+
+  // Mover el modal al inicio del <body> para evitar alturas residuales de otros divs
+  document.body.appendChild(modal);
+  modal.style.display = "flex";
+
+  setTimeout(() => { 
+    window.print(); 
+  }, 300);
 }
 
 function closeReceipt() {
