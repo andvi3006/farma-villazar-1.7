@@ -888,6 +888,17 @@ select option {
             </div>
           </div>
         </div>
+        <!-- Reemplaza el bloque actual por este -->
+        <div class="box-closure-summary" id="closure-box-container" style="margin-top:20px; display:block; background:rgba(0,180,100,0.15); padding:15px; border-radius:10px; border:1px solid rgba(0,180,100,0.3);">
+        <div style="margin-bottom: 10px;">
+            <div style="font-size:0.85rem; font-weight:600; text-transform:uppercase;" id="closure-date-label">Fecha: No seleccionada</div>
+            <div style="font-size:0.75rem; color:var(--muted);">Suma total automatizada en base a boletas grabadas</div>
+        </div>
+        
+        <!-- Aquí el JS insertará las tarjetas de Efectivo, Yape, Total y Margen -->
+        <div id="closure-total-amount"></div>
+        </div>
+
         <div class="table-wrapper">
           <table>
             <thead>
@@ -904,17 +915,6 @@ select option {
               <tr><td colspan="6" style="text-align:center; color:var(--muted);">Seleccione una fecha para ver el historial de arqueo.</td></tr>
             </tbody>
           </table>
-        </div>
-        
-        <div class="box-closure-summary" id="closure-box-container" style="margin-top:20px; display:flex; justify-content:space-between; background:rgba(0,180,100,0.15); padding:15px; border-radius:10px; border:1px solid rgba(0,180,100,0.3);">
-          <div>
-            <div style="font-size:0.85rem; font-weight:600; text-transform:uppercase;" id="closure-date-label">Fecha: No seleccionada</div>
-            <div style="font-size:0.75rem; color:var(--muted);">Suma total automatizada en base a boletas grabadas</div>
-          </div>
-          <div style="text-align:right; width: 100%;">
-            <span style="font-size:0.85rem; margin-right:5px;">EFECTIVO TOTAL EN CAJA:</span>
-            <span style="font-size:1.6rem; font-weight:800; color:#fff;" id="closure-total-amount">S/. 0.00</span>
-          </div>
         </div>
       </div>
     </div>
@@ -1900,16 +1900,18 @@ function renderSalesHistory() {
   if (closureLabel) {
     closureLabel.innerText = (startDate === endDate) 
       ? "Fecha de Arqueo: " + (startDate || "No seleccionada")
-      : `Rango de Arqueo: desde ${startDate} to ${endDate}`;
+      : `Rango de Arqueo: desde ${startDate} hasta ${endDate}`;
   }
 
   let salesHistory = DB.get('f_sales', []);
   let prods = DB.get('f_prods', []);
 
+  const closureTotalAmountEl = document.getElementById("closure-total-amount");
+
   if (salesHistory.length === 0 || !startDate || !endDate) {
     historyBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted);">Seleccione un rango de fechas para ver el historial.</td></tr>`;
-    if (document.getElementById("closure-total-amount")) {
-      document.getElementById("closure-total-amount").innerText = "S/. 0.00";
+    if (closureTotalAmountEl) {
+      closureTotalAmountEl.innerHTML = `<span style="color:var(--muted);">S/. 0.00</span>`;
     }
     return;
   }
@@ -1927,21 +1929,19 @@ function renderSalesHistory() {
       hasSales = true;
       const numPrice = parseFloat(sale.total.replace("S/.", "").replace("S/", "").trim()) || 0;
       const esEliminada = sale.estado === "ELIMINADA";
-      const metodo = sale.metodoPago || "efectivo"; // Compatibilidad con ventas previas
+      const metodo = sale.metodoPago || "efectivo";
 
       if (esEliminada) {
         totalVentasEliminadas += numPrice;
       } else {
         totalVentasActivas += numPrice;
 
-        // Suma por método de pago individual
         if (metodo === "yape" || metodo === "aplicativo") {
           totalAplicativo += numPrice;
         } else {
           totalEfectivo += numPrice;
         }
 
-        // Cálculo de margen de ganancia
         if (sale.items && Array.isArray(sale.items)) {
           sale.items.forEach(item => {
             let qtyVendida = parseInt(item.qty) || 1;
@@ -2012,10 +2012,9 @@ function renderSalesHistory() {
     }
   });
 
-  const closureTotalAmountEl = document.getElementById("closure-total-amount");
   if (!hasSales) {
     historyBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted);">No se encontraron ventas para el rango seleccionado.</td></tr>`;
-    if (closureTotalAmountEl) closureTotalAmountEl.innerText = "S/. 0.00";
+    if (closureTotalAmountEl) closureTotalAmountEl.innerHTML = `<span style="color:var(--muted);">S/. 0.00</span>`;
   } else {
     if (closureTotalAmountEl) {
       closureTotalAmountEl.innerHTML = `
