@@ -258,12 +258,11 @@ body.authenticated .login-overlay { display: none; }
 .panel-card { 
   background: var(--card); 
   border: 1px solid var(--border); 
-  backdrop-filter: blur(8px);
+  /* backdrop-filter: blur(8px);  <-- COMENTADO/ELIMINADO para acelerar renderizado */
   border-radius: 14px; 
   padding: 1.25rem; 
   margin-bottom: 16px; 
 }
-
 .panel-title { 
   font-family: 'Syne', sans-serif; 
   font-size: 0.95rem; 
@@ -418,8 +417,8 @@ tr:hover td { background: rgb(78, 6, 134); }
 .receipt-backdrop { 
   position: fixed; 
   inset: 0; 
-  background: rgba(0,0,0,0.65); 
-  backdrop-filter: blur(5px); 
+  background: rgba(0, 0, 0, 0.85); /* Se reemplaza blur por fondo con leve opacidad */
+  /* backdrop-filter: blur(5px); <-- ELIMINADO para ganar FPS */
   z-index: 2000; 
   display: none; 
   align-items: center; 
@@ -736,6 +735,12 @@ select option {
     <button class="menu-btn" onclick="switchSection('ingresos', this)"><i class="ri-download-2-line"></i> Ingresar Almacén</button>
     <button class="menu-btn" onclick="switchSection('precios', this)"><i class="ri-money-dollar-box-line"></i> Precios de Lista</button>
     <button class="menu-btn" onclick="switchSection('simulador', this)"><i class="ri-file-list-3-line"></i> Pedido Simulado</button>
+    <button class="menu-btn" onclick="switchSection('compras-sugeridas', this)">
+    <i class="ri-shopping-basket-line"></i> Compras Sugeridas
+    </button>
+    <button class="menu-btn" onclick="switchSection('compras-aprobadas', this)">
+    <i class="ri-checkbox-circle-line"></i> Compras Aprobadas
+    </button>
         <!-- SECCIÓN DE RESPALDO (SISTEMA) -->
     <hr style="border: 0; border-top: 1px solid var(--border); margin: 15px 0; opacity: 0.5;">
     <p style="font-size: 0.75rem; color: var(--text-muted); padding: 0 15px; margin-bottom: 8px; font-weight: bold; uppercase;">Mantenimiento</p>
@@ -1050,14 +1055,16 @@ select option {
             <label>Categoría del Medicamento:</label>
             <div style="display: flex; gap: 6px; margin-bottom: 12px;">
               <select id="p-cat" class="input-ctrl" style="flex: 1;"></select>
-              <button type="button" class="btn btn-primary" onclick="addCategory()" style="padding: 4px 10px;">+ Añadir</button>
+              <button type="button" class="btn btn-primary" onclick="addCategory()" style="padding: 4px 8px;" title="Añadir nueva">+ Añadir</button>
+              <button type="button" class="btn btn-secondary" onclick="openManageModal('cats')" style="padding: 4px 8px;" title="Gestionar / Editar / Eliminar"><i class="ri-edit-2-line"></i></button>
             </div>
           </div>
           <div class="form-group">
             <label>Forma Farmacéutica:</label>
             <div style="display: flex; gap: 6px; margin-bottom: 12px;">
               <select id="p-forma" class="input-ctrl" style="flex: 1;"></select>
-              <button type="button" class="btn btn-primary" onclick="addForma()" style="padding: 4px 10px;">+ Añadir</button>
+              <button type="button" class="btn btn-primary" onclick="addForma()" style="padding: 4px 8px;" title="Añadir nueva">+ Añadir</button>
+              <button type="button" class="btn btn-secondary" onclick="openManageModal('formas')" style="padding: 4px 8px;" title="Gestionar / Editar / Eliminar"><i class="ri-edit-2-line"></i></button>
             </div>
           </div>
         </div>
@@ -1127,12 +1134,19 @@ select option {
         <h1>Asignación y Control de Precios</h1>
       </div>
       <div class="panel-card">
-        <div class="panel-title"><i class="ri-money-dollar-circle-line"></i> Matriz de Costos, IGV y Configuración de Precios</div>
+        <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <span><i class="ri-money-dollar-circle-line"></i> Matriz de Costos, IGV y Configuración de Precios</span>
+          <!-- Buscador directo en la cabecera del panel -->
+          <div style="width: 100%; max-width: 320px;">
+            <input type="text" id="prices-search-input" class="input-ctrl" placeholder="🔍 Buscar por nombre o código..." oninput="renderPricesTable()">
+          </div>
+        </div>
         <div class="table-wrapper">
           <table>
             <thead>
               <tr>
                 <th>Medicamento</th>
+                <th>Categoría</th> <!-- Columna adicionada -->
                 <th>Costo Caja / Unit</th>
                 <th>¿Aplica IGV (18%)?</th>
                 <th>Precio Venta Caja S/.</th>
@@ -1187,7 +1201,104 @@ select option {
       </div>
     </div>
 
+    <!-- MÓDULO DE COMPRAS SUGERIDAS -->
+    <!-- MÓDULO DE COMPRAS SUGERIDAS (AGRUPADO POR FORMA FARMACÉUTICA) -->
+<!-- MÓDULO DE COMPRAS SUGERIDAS (AGRUPADO POR FORMA FARMACÉUTICA) -->
+<div id="sec-compras-sugeridas" class="page-section">
+  <div class="section-header">
+    <h1>Sugerencias de Compra e Inventario Bajo</h1>
+    <div class="badge badge-purple">Reabastecimiento Inteligente</div>
   </div>
+
+  <div class="panel-card">
+    <div class="panel-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <span><i class="ri-lightbulb-line"></i> Productos con Stock Crítico para Recompra</span>
+      
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <!-- FILTRO EN LA PARTE SUPERIOR POR FORMA FARMACÉUTICA -->
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label style="font-size:0.8rem; font-weight:600; color:var(--muted);">Filtrar por Forma:</label>
+          <select id="suggested-filter-forma" class="input-ctrl" style="width: auto; padding: 4px 10px;" onchange="renderSuggestedPurchases()">
+            <option value="TODAS">-- Ver Todas las Formas --</option>
+          </select>
+        </div>
+
+        <!-- BOTÓN DE DESCARGA EN PDF -->
+        <button class="btn btn-primary" onclick="exportSuggestedToPDF()" style="padding: 5px 12px; font-size: 0.8rem;">
+          <i class="ri-file-pdf-line"></i> Descargar PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- Contenedor dinámico donde se generan las tablas por grupo -->
+    <div id="suggested-purchases-container" style="margin-top:15px;">
+      <p style="text-align:center; color:var(--muted);">Cargando sugerencias de compra...</p>
+    </div>
+  </div>
+</div>
+
+<!-- MÓDULO DE COMPRAS APROBADAS -->
+<!-- MÓDULO DE COMPRAS APROBADAS -->
+<!-- MÓDULO DE COMPRAS APROBADAS -->
+<div id="sec-compras-aprobadas" class="page-section">
+  <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h1>Compras Aprobadas</h1>
+      <div class="badge badge-green">Planificación Financiera & Reabastecimiento</div>
+    </div>
+    
+    <!-- ACCIONES Y CONTROLES DE RESPALDO / PDF -->
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="exportApprovedBackupJSON()" style="font-size:0.8rem;">
+        <i class="ri-download-cloud-2-line"></i> Respaldar (JSON)
+      </button>
+
+      <button class="btn btn-secondary" onclick="document.getElementById('approved-file-input').click()" style="font-size:0.8rem;">
+        <i class="ri-upload-cloud-2-line"></i> Cargar (JSON)
+      </button>
+      <input type="file" id="approved-file-input" style="display:none" accept=".json" onchange="importApprovedBackupJSON(event)">
+
+      <button class="btn btn-success" onclick="exportApprovedToPDF()" style="font-size:0.8rem;">
+        <i class="ri-printer-line"></i> Exportar PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- PANEL DE BÚSQUEDA -->
+  <div class="panel-card" style="position: relative; z-index: 10;">
+    <div class="panel-title"><i class="ri-search-line"></i> Buscar Producto para Listar</div>
+    <div class="search-container">
+      <input type="text" class="input-ctrl" id="approved-search-input" placeholder="Escriba el nombre del medicamento o escanee el código..." oninput="handleApprovedSearch(this.value)">
+      <div class="predictive-results" id="approved-search-box" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- PANEL DE TABLA Y PRESUPUESTO -->
+  <div class="panel-card" style="position: relative; z-index: 1;">
+    <div class="panel-title" style="display:flex; justify-content:space-between; align-items:center;">
+      <span><i class="ri-shopping-cart-check-line"></i> Detalle de Plan de Compra Agrupado por Categoría</span>
+      <button class="btn btn-danger" style="padding:4px 10px; font-size:0.75rem;" onclick="clearApprovedPurchases()">
+        <i class="ri-delete-bin-line"></i> Limpiar Lista
+      </button>
+    </div>
+
+    <!-- TARJETA DE RESUMEN DE INVERSIÓN TOTAL -->
+    <div id="approved-summary-box" style="background: linear-gradient(135deg, rgba(106, 13, 173, 0.25), rgba(0, 213, 255, 0.15)); padding: 15px; border-radius: 10px; border: 1px solid var(--p3); margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <div>
+        <span style="font-size:0.85rem; color:var(--muted); display:block;">PRESUPUESTO TOTAL ESTIMADO DE COMPRA</span>
+        <strong id="approved-total-amount" style="font-size:1.6rem; color:#00d5ff; font-family:'Syne', sans-serif;">S/. 0.00</strong>
+      </div>
+      <div>
+        <span class="badge badge-purple" id="approved-items-count">0 Productos enlistados</span>
+      </div>
+    </div>
+
+    <!-- CONTENEDOR DINÁMICO DONDE SE DIBUJARÁN LAS TABLAS POR CATEGORÍA -->
+    <div id="approved-purchases-container" style="margin-top:15px;">
+      <p style="text-align:center; color:var(--muted);">No hay productos enlistados. Busque un producto arriba para agregarlo.</p>
+    </div>
+  </div>
+</div>
 
 <div class="receipt-backdrop" id="receipt-modal">
     <div class="receipt-paper">
@@ -1309,22 +1420,61 @@ select option {
     </div>
   </div>
 
+  <!-- MODAL DE GESTIÓN DE CATEGORÍAS Y FORMAS FARMACÉUTICAS -->
+  <div class="receipt-backdrop" id="manage-cats-modal">
+    <div class="receipt-paper" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 18px; max-width: 420px; font-family: inherit;">
+      <h3 style="color:#fff; text-align:left; font-family:'Syne';" id="manage-modal-title"><i class="ri-settings-4-line"></i> Gestionar</h3>
+      <div class="receipt-line" style="border-color: var(--border);"></div>
+
+      <div style="max-height: 280px; overflow-y: auto; margin-bottom: 15px;">
+        <table style="width: 100%;">
+          <thead>
+            <tr>
+              <th style="color: #fff; border-bottom: 1px solid var(--border);">Nombre</th>
+              <th style="color: #fff; border-bottom: 1px solid var(--border); text-align: right;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="manage-items-list-body">
+            <!-- Renderizado dinámico desde JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div style="text-align:center;">
+        <button class="btn btn-secondary" style="width:100%; justify-content:center;" onclick="closeManageModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- jsPDF + AutoTable para exportación ultra rápida -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
   <script>
 // ==========================================
 // 1. CONFIGURACIÓN, BASE DE DATOS Y ARRANQUE
 // ==========================================
 const AUTH = { user: "admin", pass: "admin123", secret: "FARMA777" };
 
+// Caché local en RAM para evitar constantes parsing de LocalStorage
+const _DBCache = {};
+
 const DB = {
   get: (key, fallback) => {
+    if (_DBCache[key] !== undefined) return _DBCache[key];
     try {
       const item = localStorage.getItem(key);
-      return item ? JSON.parse(item) : fallback;
+      const parsed = item ? JSON.parse(item) : fallback;
+      _DBCache[key] = parsed;
+      return parsed;
     } catch {
       return fallback;
     }
   },
-  set: (key, value) => localStorage.setItem(key, JSON.stringify(value))
+  set: (key, value) => {
+    _DBCache[key] = value;
+    localStorage.setItem(key, JSON.stringify(value));
+  }
 };
 
 function saveEverythingLocally() {}
@@ -1429,7 +1579,16 @@ function switchSection(secId, btn) {
   if (targetSec) targetSec.classList.add('active');
   if (btn) btn.classList.add('active');
   
-  initSystem();
+  // Renderizar ÚNICAMENTE la vista activa en lugar de re-renderizar todo el sistema
+  if (secId === 'ventas') renderCart();
+  else if (secId === 'caja') renderSalesHistory();
+  else if (secId === 'inventario-real') renderRealInventory();
+  else if (secId === 'productos') { renderDropdowns(); renderCatalog(); }
+  else if (secId === 'ingresos') renderInventory();
+  else if (secId === 'precios') renderPricesTable();
+  else if (secId === 'simulador') renderSimulation();
+  else if (secId === 'compras-sugeridas') renderSuggestedPurchases();
+  else if (secId === 'compras-aprobadas') renderApprovedPurchases();
 }
 
 function initSystem() {
@@ -1440,6 +1599,8 @@ function initSystem() {
   renderPricesTable();
   renderSimulation();
   renderSalesHistory();
+  renderSuggestedPurchases(); // <--- Agregar esta línea
+  renderApprovedPurchases();
 }
 
 // ==========================================
@@ -2382,6 +2543,11 @@ function closeEditModal() {
 // ==========================================
 // 8. REGISTROS, FORMULARIOS Y PRECIOS
 // ==========================================
+// ==========================================
+// 8. REGISTROS, FORMULARIOS Y PRECIOS
+// ==========================================
+let currentManageType = 'cats'; // 'cats' o 'formas'
+
 function renderDropdowns() {
   const cSel = document.getElementById('p-cat');
   const fSel = document.getElementById('p-forma');
@@ -2428,6 +2594,127 @@ function addForma() {
     alert("⚠️ Esta forma farmacéutica ya existe.");
   }
   renderDropdowns();
+}
+
+// --- GESTIÓN COMPLETA (MODAL EDITAR / ELIMINAR) ---
+function openManageModal(type) {
+  currentManageType = type;
+  const modal = document.getElementById('manage-cats-modal');
+  const title = document.getElementById('manage-modal-title');
+  if(!modal) return;
+
+  if (type === 'cats') {
+    title.innerHTML = `<i class="ri-folder-settings-line"></i> Gestionar Categorías`;
+  } else {
+    title.innerHTML = `<i class="ri-capsule-line"></i> Gestionar Formas Farmacéuticas`;
+  }
+
+  renderManageList();
+  modal.style.display = 'flex';
+}
+
+function closeManageModal() {
+  const modal = document.getElementById('manage-cats-modal');
+  if(modal) modal.style.display = 'none';
+}
+
+function renderManageList() {
+  const tbody = document.getElementById('manage-items-list-body');
+  if(!tbody) return;
+
+  const key = currentManageType === 'cats' ? 'f_cats' : 'f_formas';
+  const list = DB.get(key, []);
+
+  if(list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:var(--muted);">No hay elementos registrados.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map((item, index) => `
+    <tr>
+      <td style="color:#fff; font-weight:600;">${item}</td>
+      <td style="text-align:right;">
+        <div style="display:flex; gap:6px; justify-content:flex-end;">
+          <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.75rem;" onclick="editManageItem(${index})" title="Renombrar"><i class="ri-edit-line"></i> Editar</button>
+          <button class="btn btn-danger" style="padding:3px 7px; font-size:0.75rem; background:rgba(239,68,68,0.2);" onclick="deleteManageItem(${index})" title="Eliminar"><i class="ri-delete-bin-line"></i></button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function editManageItem(index) {
+  const key = currentManageType === 'cats' ? 'f_cats' : 'f_formas';
+  let list = DB.get(key, []);
+  const oldVal = list[index];
+
+  const newVal = prompt(`Modificar el nombre de: "${oldVal}"`, oldVal);
+  if (!newVal || !newVal.trim() || newVal.trim() === oldVal) return;
+
+  const cleanVal = newVal.trim();
+  if (list.includes(cleanVal)) {
+    alert("⚠️ Ya existe un elemento con ese nombre.");
+    return;
+  }
+
+  list[index] = cleanVal;
+  DB.set(key, list);
+
+  // Actualizar referencias en productos creados
+  let prods = DB.get('f_prods', []);
+  prods.forEach(p => {
+    if (currentManageType === 'cats' && p.cat === oldVal) p.cat = cleanVal;
+    if (currentManageType === 'formas' && p.forma === oldVal) p.forma = cleanVal;
+  });
+  DB.set('f_prods', prods);
+
+  alert("✅ Renombrado correctamente.");
+  renderManageList();
+  initSystem();
+}
+
+function deleteManageItem(index) {
+  const isCat = (currentManageType === 'cats');
+  const key = isCat ? 'f_cats' : 'f_formas';
+  const defaultFallback = isCat ? 'General' : 'Sin Forma';
+  
+  let list = DB.get(key, []);
+  const targetVal = list[index];
+
+  if (!confirm(`⚠️ ¿Está seguro de eliminar "${targetVal}"?\n\nLos productos que tengan esta ${isCat ? 'categoría' : 'forma'} pasarán a llamarse "${defaultFallback}" para no romper tu base de datos.`)) return;
+
+  // 1. Eliminar de la lista de opciones
+  list.splice(index, 1);
+  DB.set(key, list);
+
+  // 2. Asegurar que el valor por defecto exista en la lista principal
+  if (!list.includes(defaultFallback)) {
+    list.push(defaultFallback);
+    DB.set(key, list);
+  }
+
+  // 3. Reasignar los productos afectados al valor de respaldo (evita campos vacíos)
+  let prods = DB.get('f_prods', []);
+  let affectedCount = 0;
+
+  prods.forEach(p => {
+    if (isCat && p.cat === targetVal) {
+      p.cat = defaultFallback;
+      affectedCount++;
+    } else if (!isCat && p.forma === targetVal) {
+      p.forma = defaultFallback;
+      affectedCount++;
+    }
+  });
+
+  if (affectedCount > 0) {
+    DB.set('f_prods', prods);
+  }
+
+  alert(`✅ "${targetVal}" fue eliminado. Se reasignaron ${affectedCount} producto(s) a "${defaultFallback}".`);
+  
+  renderManageList();
+  initSystem();
 }
 
 function saveProduct() {
@@ -2673,34 +2960,83 @@ function renderInventory() {
 
 function renderPricesTable() {
   const tbody = document.getElementById('prices-table-body');
-  const prods = DB.get('f_prods', []);
-  if(!tbody) return;
+  const searchInput = document.getElementById('prices-search-input');
+  const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-  tbody.innerHTML = prods.map(p => `
-    <tr>
-      <td><strong>${p.desc}</strong></td>
-      <td><input type="number" step="0.01" class="input-ctrl" style="padding:4px; width:80px;" id="cost-${p.id}" value="${p.cost || 0}"></td>
-      <td style="text-align:center;"><input type="checkbox" id="igv-${p.id}" ${p.useIgv ? 'checked' : ''}></td>
-      <td><input type="number" step="0.01" class="input-ctrl" style="padding:4px; width:90px;" id="pbox-${p.id}" value="${p.priceBox || 0}"></td>
-      <td><input type="number" step="0.01" class="input-ctrl" style="padding:4px; width:90px;" id="punit-${p.id}" value="${p.priceUnit || 0}"></td>
-      <td><button class="btn btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick="updatePriceRow('${p.id}')"><i class="ri-save-line"></i></button></td>
-    </tr>
-  `).join('');
+  const prods = DB.get('f_prods', []);
+  const cats = DB.get('f_cats', []);
+  if (!tbody) return;
+
+  // 1. Si la búsqueda tiene solo 1 letra, no procesamos aún para evitar tirones
+  if (query.length === 1) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--muted); padding:15px;">Escriba al menos 2 letras para filtrar...</td></tr>`;
+    return;
+  }
+
+  // 2. Filtrado rápido
+  const filtered = prods.filter(p => 
+    !query || 
+    p.desc.toLowerCase().includes(query) || 
+    p.id.toLowerCase().includes(query) ||
+    (p.barcode && p.barcode.toLowerCase().includes(query))
+  );
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--muted); padding:15px;">No se encontraron productos coincidentes.</td></tr>`;
+    return;
+  }
+
+  // 3. Límite de carga: Máximo 30 resultados para que el renderizado sea instantáneo
+  const MAX_LIMIT = 30; 
+  const listToRender = filtered.slice(0, MAX_LIMIT);
+
+  // 4. Pre-generar las opciones de categorías en texto una sola vez
+  const baseCatOptions = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  let htmlRows = listToRender.map(p => {
+    // Reemplazar la opción seleccionada rápidamente sin mapear en cada vuelta
+    const optionsHtml = baseCatOptions.replace(
+      `value="${p.cat}"`, 
+      `value="${p.cat}" selected`
+    );
+
+    return `
+      <tr>
+        <td><strong>${p.desc}</strong></td>
+        <td>
+          <select class="input-ctrl" style="padding:4px; font-size:0.8rem; min-width:120px;" id="cat-${p.id}">
+            ${optionsHtml}
+          </select>
+        </td>
+        <td><input type="number" step="0.01" class="input-ctrl" style="padding:4px; width:80px;" id="cost-${p.id}" value="${p.cost || 0}"></td>
+        <td style="text-align:center;"><input type="checkbox" id="igv-${p.id}" ${p.useIgv ? 'checked' : ''}></td>
+        <td><input type="number" step="0.01" class="input-ctrl" style="padding:4px; width:90px;" id="pbox-${p.id}" value="${p.priceBox || 0}"></td>
+        <td><input type="number" step="0.01" class="input-ctrl" style="padding:4px; width:90px;" id="punit-${p.id}" value="${p.priceUnit || 0}"></td>
+        <td><button class="btn btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick="updatePriceRow('${p.id}')"><i class="ri-save-line"></i> Guardar</button></td>
+      </tr>
+    `;
+  }).join('');
+
+  if (filtered.length > MAX_LIMIT) {
+    htmlRows += `<tr><td colspan="7" style="text-align:center; color:var(--p2); padding:10px;">⚡ Mostrando los primeros ${MAX_LIMIT} resultados de ${filtered.length}. Complete más el nombre para precisar.</td></tr>`;
+  }
+
+  tbody.innerHTML = htmlRows;
 }
 
 function updatePriceRow(pid) {
   let prods = DB.get('f_prods', []);
   let idx = prods.findIndex(x => x.id === pid);
-  if(idx === -1) return;
+  if (idx === -1) return;
 
+  if (document.getElementById(`cat-${pid}`)) prods[idx].cat = document.getElementById(`cat-${pid}`).value;
   if (document.getElementById(`cost-${pid}`)) prods[idx].cost = parseFloat(document.getElementById(`cost-${pid}`).value) || 0;
   if (document.getElementById(`igv-${pid}`)) prods[idx].useIgv = document.getElementById(`igv-${pid}`).checked;
   if (document.getElementById(`pbox-${pid}`)) prods[idx].priceBox = parseFloat(document.getElementById(`pbox-${pid}`).value) || 0;
   if (document.getElementById(`punit-${pid}`)) prods[idx].priceUnit = parseFloat(document.getElementById(`punit-${pid}`).value) || 0;
 
   DB.set('f_prods', prods);
-  initSystem();
-  alert("Precios actualizados.");
+  alert("✅ Producto y precios actualizados correctamente.");
 }
 
 // ==========================================
@@ -2766,6 +3102,606 @@ function importData(event) {
   };
   reader.readAsText(file);
   event.target.value = ''; 
+}
+
+// Variable para almacenar temporalmente los productos ignorados de la lista de compras sugeridas
+// Variables para almacenar descartes
+let ignoredSuggestedIds = [];
+let ignoredSuggestedFormas = [];
+
+// ==========================================
+// 11. MÓDULO DE COMPRAS SUGERIDAS (AGRUPADO)
+// ==========================================
+// ==========================================
+// 11. MÓDULO DE COMPRAS SUGERIDAS (AGRUPADO CON BOTÓN DE APROBACIÓN)
+// ==========================================
+function renderSuggestedPurchases() {
+  const container = document.getElementById('suggested-purchases-container');
+  const selectFilter = document.getElementById('suggested-filter-forma');
+  if (!container) return;
+
+  const prods = DB.get('f_prods', []);
+  const lots = DB.get('f_lots', []);
+  const formasList = DB.get('f_formas', []);
+  let approvedList = DB.get('f_approved_purchases', []);
+
+  // Cargar opciones en el filtro desplegable
+  if (selectFilter && selectFilter.options.length <= 1) {
+    let filterOptions = `<option value="TODAS">-- Ver Todas las Formas --</option>`;
+    formasList.forEach(f => {
+      filterOptions += `<option value="${f}">${f}</option>`;
+    });
+    selectFilter.innerHTML = filterOptions;
+  }
+
+  const selectedFilterForma = selectFilter ? selectFilter.value : 'TODAS';
+
+  let suggestedList = [];
+
+  prods.forEach(p => {
+    const formaProd = p.forma || 'Sin Forma';
+
+    // Omitir descartados
+    if (ignoredSuggestedIds.includes(p.id) || ignoredSuggestedFormas.includes(formaProd)) return;
+
+    // Aplicar filtro selector
+    if (selectedFilterForma !== 'TODAS' && formaProd !== selectedFilterForma) return;
+
+    // Calcular stock actual
+    const currentStock = lots
+      .filter(l => l.prodId === p.id)
+      .reduce((sum, l) => sum + (parseInt(l.stockUnits) || 0), 0);
+
+    const boxUnits = parseInt(p.boxUnits) || 1;
+
+    // Lógica de reposición
+    const cond1 = (boxUnits >= 5 && boxUnits <= 10) && (currentStock <= 5);
+    const cond2 = (boxUnits >= 2 && boxUnits <= 4) && (currentStock <= 1);
+    const cond3 = (boxUnits === 1) && (currentStock <= 0);
+    const cond4 = (boxUnits >= 30) && (currentStock <= 20);
+
+    if (cond1 || cond2 || cond3 || cond4) {
+      suggestedList.push({
+        id: p.id,
+        desc: p.desc,
+        forma: formaProd,
+        boxUnits: boxUnits,
+        stock: currentStock,
+        priceBoxCost: parseFloat(p.cost) || 0,
+        priceUnitSale: parseFloat(p.priceUnit) || 0
+      });
+    }
+  });
+
+  if (suggestedList.length === 0) {
+    container.innerHTML = `<div style="text-align:center; padding: 20px; color:var(--muted);">No hay productos en estado crítico de reposición.</div>`;
+    return;
+  }
+
+  // Agrupar por Forma Farmacéutica
+  const groupedByForma = {};
+  suggestedList.forEach(item => {
+    if (!groupedByForma[item.forma]) {
+      groupedByForma[item.forma] = [];
+    }
+    groupedByForma[item.forma].push(item);
+  });
+
+  let htmlOutput = '';
+  for (const forma in groupedByForma) {
+    const items = groupedByForma[forma];
+
+    htmlOutput += `
+      <div style="margin-bottom: 25px; border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: rgba(255,255,255,0.01);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed var(--border); flex-wrap:wrap; gap:8px;">
+          <h3 style="color: var(--p2); font-family: 'Syne', sans-serif; font-size: 1rem; display: flex; align-items: center; gap: 6px;">
+            <i class="ri-capsule-line"></i> Forma: ${forma} <span class="badge badge-purple">${items.length} ítem(s)</span>
+          </h3>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-success" style="padding: 4px 10px; font-size: 0.78rem;" onclick="approveWholeGroup('${forma}')">
+              <i class="ri-add-circle-line"></i> Aprobar Grupo (${forma})
+            </button>
+            <button class="btn btn-danger" style="padding: 4px 10px; font-size: 0.78rem;" onclick="removeSuggestedGroup('${forma}')">
+              <i class="ri-delete-bin-3-line"></i> Quitar Grupo
+            </button>
+          </div>
+        </div>
+        <div class="table-wrapper" style="margin-top:0;">
+          <table>
+            <thead>
+              <tr>
+                <th>Medicamento</th>
+                <th>Uds. / Caja</th>
+                <th>Stock Actual</th>
+                <th>Precio Compra (Caja)</th>
+                <th>Precio Venta (Unidad)</th>
+                <th style="text-align:center;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map(it => {
+                // Verificar si ya fue agregado a la lista de aprobados
+                const isApproved = approvedList.some(item => (typeof item === 'string' ? item === it.id : item.id === it.id));
+                const btnApprove = isApproved 
+                  ? `<span class="badge badge-green" style="font-size:0.75rem;"><i class="ri-check-line"></i> En Aprobados</span>`
+                  : `<button class="btn btn-success" style="padding:3px 8px; font-size:0.75rem;" onclick="approveSuggestedProduct('${it.id}')">
+                      <i class="ri-add-line"></i> Aprobar
+                     </button>`;
+
+                return `
+                  <tr>
+                    <td><strong>${it.desc}</strong></td>
+                    <td><span class="badge badge-purple">${it.boxUnits} uds/caja</span></td>
+                    <td><span class="badge badge-alert-roja" style="font-size:0.8rem; font-weight:bold;">${it.stock} uds</span></td>
+                    <td><strong style="color:var(--p2);">S/. ${it.priceBoxCost.toFixed(2)}</strong></td>
+                    <td><strong style="color:var(--success);">S/. ${it.priceUnitSale.toFixed(2)}</strong></td>
+                    <td style="text-align:center;">
+                      <div style="display:flex; gap:4px; justify-content:center; align-items:center;">
+                        ${btnApprove}
+                        <button class="btn btn-danger" style="padding:3px 8px; font-size:0.75rem; background:rgba(239, 68, 68, 0.2);" onclick="removeSuggestedItem('${it.id}')" title="Descartar de la vista">
+                          <i class="ri-close-line"></i> Quitar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = htmlOutput;
+}
+
+
+// Agregar un producto sugerido a la lista de compras aprobadas
+function approveSuggestedProduct(prodId) {
+  let approvedList = DB.get('f_approved_purchases', []);
+
+  // Normalizar estructura
+  approvedList = approvedList.map(item => typeof item === 'string' ? { id: item, buyMode: 'Caja', qty: 1 } : item);
+
+  const exists = approvedList.some(item => item.id === prodId);
+
+  if (!exists) {
+    approvedList.push({ id: prodId, buyMode: 'Caja', qty: 1 });
+    DB.set('f_approved_purchases', approvedList);
+  }
+
+  // Refrescar ambas vistas para sincronizar botones y montos
+  renderSuggestedPurchases();
+  renderApprovedPurchases();
+}
+
+// Agregar todos los productos de un grupo completo de forma farmacéutica
+function approveWholeGroup(formaName) {
+  const prods = DB.get('f_prods', []);
+  const lots = DB.get('f_lots', []);
+  let approvedList = DB.get('f_approved_purchases', []);
+
+  approvedList = approvedList.map(item => typeof item === 'string' ? { id: item, buyMode: 'Caja', qty: 1 } : item);
+
+  let addedCount = 0;
+
+  prods.forEach(p => {
+    if (p.forma === formaName && !ignoredSuggestedIds.includes(p.id)) {
+      const currentStock = lots.filter(l => l.prodId === p.id).reduce((sum, l) => sum + (parseInt(l.stockUnits) || 0), 0);
+      const boxUnits = parseInt(p.boxUnits) || 1;
+
+      const cond1 = (boxUnits >= 5 && boxUnits <= 10) && (currentStock <= 5);
+      const cond2 = (boxUnits >= 2 && boxUnits <= 4) && (currentStock <= 1);
+      const cond3 = (boxUnits === 1) && (currentStock <= 0);
+      const cond4 = (boxUnits >= 30) && (currentStock <= 20);
+
+      if (cond1 || cond2 || cond3 || cond4) {
+        if (!approvedList.some(item => item.id === p.id)) {
+          approvedList.push({ id: p.id, buyMode: 'Caja', qty: 1 });
+          addedCount++;
+        }
+      }
+    }
+  });
+
+  if (addedCount > 0) {
+    DB.set('f_approved_purchases', approvedList);
+    alert(`✅ Se agregaron ${addedCount} producto(s) del grupo "${formaName}" a Compras Aprobadas.`);
+    renderSuggestedPurchases();
+    renderApprovedPurchases();
+  } else {
+    alert(`ℹ️ Todos los productos de este grupo ya estaban en Compras Aprobadas.`);
+  }
+}
+// ==========================================
+// MÓDULO DE COMPRAS APROBADAS
+// ==========================================
+
+// Manejo del buscador predictivo
+// ==========================================
+// MÓDULO DE COMPRAS APROBADAS Y CÁLCULO DE PRESUPUESTO
+// ==========================================
+
+// ==========================================
+// MÓDULO DE COMPRAS APROBADAS Y CÁLCULO DE PRESUPUESTO
+// ==========================================
+
+function handleApprovedSearch(val) {
+  const box = document.getElementById('approved-search-box');
+  if (!box) return;
+  const q = val.toLowerCase().trim();
+  if (!q) { box.style.display = 'none'; return; }
+
+  const prods = DB.get('f_prods', []);
+  const filtered = prods.filter(p => 
+    (p.desc && p.desc.toLowerCase().includes(q)) || 
+    (p.barcode && p.barcode.toLowerCase().includes(q))
+  );
+
+  if (filtered.length === 0) {
+    box.innerHTML = `<div class="predictive-item" style="color:var(--muted); padding:10px;">Sin coincidencias...</div>`;
+  } else {
+    box.innerHTML = filtered.map(p => `
+      <div class="predictive-item" onclick="addApprovedProduct('${p.id}')" style="padding:10px; cursor:pointer;">
+        <span style="font-weight:600; color:#fff;">${p.desc}</span>
+        <span style="float:right;" class="badge badge-purple">${p.cat || 'General'}</span>
+      </div>
+    `).join('');
+  }
+  box.style.display = 'block';
+}
+
+function addApprovedProduct(prodId) {
+  let approvedList = DB.get('f_approved_purchases', []);
+  
+  approvedList = approvedList.map(item => typeof item === 'string' ? { id: item, buyMode: 'Caja', qty: 1 } : item);
+
+  const exists = approvedList.some(item => item.id === prodId);
+  
+  if (!exists) {
+    approvedList.push({ id: prodId, buyMode: 'Caja', qty: 1 });
+    DB.set('f_approved_purchases', approvedList);
+  }
+
+  const searchInput = document.getElementById('approved-search-input');
+  if (searchInput) searchInput.value = '';
+
+  const searchBox = document.getElementById('approved-search-box');
+  if (searchBox) searchBox.style.display = 'none';
+
+  renderApprovedPurchases();
+}
+
+function updateApprovedMode(index, newMode) {
+  let approvedList = DB.get('f_approved_purchases', []);
+  if (approvedList[index]) {
+    approvedList[index].buyMode = newMode;
+    DB.set('f_approved_purchases', approvedList);
+    renderApprovedPurchases();
+  }
+}
+
+function updateApprovedQty(index, newQty) {
+  let approvedList = DB.get('f_approved_purchases', []);
+  const parsedQty = parseInt(newQty) || 1;
+  if (approvedList[index]) {
+    approvedList[index].qty = parsedQty < 1 ? 1 : parsedQty;
+    DB.set('f_approved_purchases', approvedList);
+    renderApprovedPurchases();
+  }
+}
+
+function removeApprovedProduct(index) {
+  let approvedList = DB.get('f_approved_purchases', []);
+  approvedList.splice(index, 1);
+  DB.set('f_approved_purchases', approvedList);
+  renderApprovedPurchases();
+}
+
+function clearApprovedPurchases() {
+  if (confirm("¿Desea limpiar toda la lista de compras aprobadas?")) {
+    DB.set('f_approved_purchases', []);
+    renderApprovedPurchases();
+  }
+}
+
+// Renderiza tablas agrupadas por Categoría
+function renderApprovedPurchases() {
+  const container = document.getElementById('approved-purchases-container');
+  if (!container) return;
+
+  let approvedList = DB.get('f_approved_purchases', []);
+  const prods = DB.get('f_prods', []);
+
+  if (approvedList.length === 0) {
+    container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--muted);">No hay productos enlistados. Busque un producto arriba para agregarlo.</div>`;
+    if (document.getElementById('approved-total-amount')) document.getElementById('approved-total-amount').innerText = "S/. 0.00";
+    if (document.getElementById('approved-items-count')) document.getElementById('approved-items-count').innerText = "0 Productos enlistados";
+    return;
+  }
+
+  // Agrupar por categoría
+  const groupedByCat = {};
+  let totalPresupuestoGeneral = 0;
+
+  approvedList.forEach((item, originalIndex) => {
+    const prodObj = typeof item === 'string' ? { id: item, buyMode: 'Caja', qty: 1 } : item;
+    const p = prods.find(x => x.id === prodObj.id);
+    if (!p) return;
+
+    const catName = p.cat || 'General';
+    if (!groupedByCat[catName]) {
+      groupedByCat[catName] = [];
+    }
+
+    const boxUnits = parseInt(p.boxUnits) || 1;
+    const costBox = parseFloat(p.cost) || 0;
+    const costUnit = boxUnits > 0 ? (costBox / boxUnits) : 0;
+    const priceUnitSale = parseFloat(p.priceUnit) || 0;
+
+    const precioCompraAplicado = prodObj.buyMode === 'Caja' ? costBox : costUnit;
+    const subtotalFila = precioCompraAplicado * prodObj.qty;
+    totalPresupuestoGeneral += subtotalFila;
+
+    groupedByCat[catName].push({
+      originalIndex,
+      desc: p.desc,
+      boxUnits,
+      costBox,
+      costUnit,
+      priceUnitSale,
+      buyMode: prodObj.buyMode,
+      qty: prodObj.qty,
+      subtotalFila
+    });
+  });
+
+  let htmlOutput = "";
+
+  for (const cat in groupedByCat) {
+    const items = groupedByCat[cat];
+    let subtotalCategoria = items.reduce((sum, i) => sum + i.subtotalFila, 0);
+
+    htmlOutput += `
+      <div style="margin-bottom: 25px; border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: rgba(255,255,255,0.01);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed var(--border);">
+          <h3 style="color: var(--p2); font-family: 'Syne', sans-serif; font-size: 1rem; display: flex; align-items: center; gap: 6px;">
+            <i class="ri-folder-2-line"></i> Categoría: ${cat} <span class="badge badge-purple">${items.length} ítem(s)</span>
+          </h3>
+          <span style="font-weight:bold; color:var(--success); font-size:0.9rem;">Subtotal Categoría: S/. ${subtotalCategoria.toFixed(2)}</span>
+        </div>
+        <div class="table-wrapper" style="margin-top:0;">
+          <table>
+            <thead>
+              <tr>
+                <th>Medicamento</th>
+                <th>Uds / Caja</th>
+                <th>Costo Compra</th>
+                <th>Costo por Unidad</th>
+                <th>Precio Venta Unit.</th>
+                <th style="width:140px;">Comprar Por</th>
+                <th style="width:90px;">Cantidad</th>
+                <th>Subtotal Compra</th>
+                <th>Quitar</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map(it => `
+                <tr>
+                  <td><strong>${it.desc}</strong></td>
+                  <td><span class="badge badge-purple">${it.boxUnits} uds</span></td>
+                  <td><strong style="color:var(--p2);">S/. ${it.costBox.toFixed(2)}</strong></td>
+                  <td><strong style="color:var(--warning);">S/. ${it.costUnit.toFixed(2)}</strong></td>
+                  <td><strong style="color:var(--success);">S/. ${it.priceUnitSale.toFixed(2)}</strong></td>
+                  <td>
+                    <select class="input-ctrl" style="padding:4px; font-size:0.8rem;" onchange="updateApprovedMode(${it.originalIndex}, this.value)">
+                      <option value="Caja" ${it.buyMode === 'Caja' ? 'selected' : ''}>Caja Completa</option>
+                      <option value="Unidad" ${it.buyMode === 'Unidad' ? 'selected' : ''}>Unidad Suelta</option>
+                    </select>
+                  </td>
+                  <td>
+                    <input type="number" min="1" class="input-ctrl" style="padding:4px; width:70px; text-align:center;" value="${it.qty}" onchange="updateApprovedQty(${it.originalIndex}, this.value)">
+                  </td>
+                  <td><strong style="color:#00d5ff;">S/. ${it.subtotalFila.toFixed(2)}</strong></td>
+                  <td>
+                    <button class="btn btn-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="removeApprovedProduct(${it.originalIndex})">
+                      <i class="ri-delete-bin-line"></i>
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = htmlOutput;
+
+  if (document.getElementById('approved-total-amount')) {
+    document.getElementById('approved-total-amount').innerText = `S/. ${totalPresupuestoGeneral.toFixed(2)}`;
+  }
+  if (document.getElementById('approved-items-count')) {
+    document.getElementById('approved-items-count').innerText = `${approvedList.length} Producto(s) enlistado(s)`;
+  }
+}
+
+// --- FUNCIONES AGREGADAS PARA RESPALDO JSON Y EXPORTAR PDF EN COMPRAS APROBADAS ---
+
+function exportApprovedBackupJSON() {
+  const approvedList = DB.get('f_approved_purchases', []);
+  if (approvedList.length === 0) {
+    alert("⚠️ No hay elementos en la lista de compras aprobadas para respaldar.");
+    return;
+  }
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(approvedList, null, 2));
+  const downloadAnchor = document.createElement('a');
+  const fecha = new Date().toISOString().slice(0, 10);
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `Compras_Aprobadas_VillaZar_${fecha}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+function importApprovedBackupJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const importedData = JSON.parse(e.target.result);
+      if (Array.isArray(importedData)) {
+        DB.set('f_approved_purchases', importedData);
+        alert("✅ Lista de compras aprobadas cargada correctamente.");
+        renderApprovedPurchases();
+      } else {
+        alert("❌ Formato de archivo JSON inválido.");
+      }
+    } catch (err) {
+      alert("❌ Error al leer el archivo JSON: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function exportApprovedToPDF() {
+  let approvedList = DB.get('f_approved_purchases', []);
+  const prods = DB.get('f_prods', []);
+
+  if (approvedList.length === 0) {
+    alert("⚠️ No hay productos en la lista para exportar a PDF.");
+    return;
+  }
+
+  // Agrupar productos por categoría
+  const groupedByCat = {};
+  let totalPresupuestoGeneral = 0;
+
+  approvedList.forEach((item) => {
+    const prodObj = typeof item === 'string' ? { id: item, buyMode: 'Caja', qty: 1 } : item;
+    const p = prods.find(x => x.id === prodObj.id);
+    if (!p) return;
+
+    const catName = p.cat || 'General';
+    if (!groupedByCat[catName]) groupedByCat[catName] = [];
+
+    const boxUnits = parseInt(p.boxUnits) || 1;
+    const costBox = parseFloat(p.cost) || 0;
+    const costUnit = boxUnits > 0 ? (costBox / boxUnits) : 0;
+
+    const precioCompraAplicado = prodObj.buyMode === 'Caja' ? costBox : costUnit;
+    const subtotalFila = precioCompraAplicado * prodObj.qty;
+    totalPresupuestoGeneral += subtotalFila;
+
+    groupedByCat[catName].push({
+      desc: p.desc,
+      boxUnits,
+      costBox: `S/. ${costBox.toFixed(2)}`,
+      costUnit: `S/. ${costUnit.toFixed(2)}`,
+      buyMode: prodObj.buyMode === 'Caja' ? 'Caja' : 'Unidad',
+      qty: prodObj.qty,
+      subtotalFila: `S/. ${subtotalFila.toFixed(2)}`
+    });
+  });
+
+  // Inicializar jsPDF
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const dateStr = new Date().toLocaleDateString('es-PE', { 
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
+  });
+
+  // Encabezado
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("COMPRAS APROBADAS · BOTICA VILLAZAR", 10, 12);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text(`Fecha de Emisión: ${dateStr}`, 10, 16);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text(`TOTAL ESTIMADO: S/. ${totalPresupuestoGeneral.toFixed(2)}`, 200, 16, { align: "right" });
+
+  doc.setLineWidth(0.5);
+  doc.line(10, 18, 200, 18);
+
+  let startY = 22;
+
+  // Generar tablas vectoriales por Categoría
+  for (const cat in groupedByCat) {
+    const items = groupedByCat[cat];
+
+    // Título de la Categoría
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setFillColor(219, 234, 222); // Verde suave de fondo
+    doc.rect(10, startY, 190, 5, 'F');
+    doc.setTextColor(0, 0, 0);
+    doc.text(`CATEGORÍA: ${cat.toUpperCase()} (${items.length} ítems)`, 12, startY + 3.8);
+
+    startY += 6;
+
+    // Filas para la tabla
+    const tableBody = items.map(it => [
+      it.desc,
+      it.boxUnits,
+      it.costBox,
+      it.costUnit,
+      it.buyMode,
+      it.qty,
+      it.subtotalFila
+    ]);
+
+    // Tabla ultra compacta y liviana
+    doc.autoTable({
+      startY: startY,
+      head: [['PRODUCTO / MEDICAMENTO', 'UDS/CAJA', 'COSTO CAJA', 'COSTO UNIT.', 'MODO', 'CANT.', 'SUBTOTAL']],
+      body: tableBody,
+      theme: 'grid',
+      margin: { left: 10, right: 10 },
+      styles: {
+        fontSize: 7.5,
+        cellPadding: 1.5,
+        textColor: [0, 0, 0],
+        lineColor: [200, 200, 200],
+        lineWidth: 0.1
+      },
+      headStyles: {
+        fillColor: [51, 65, 85], // Gris oscuro
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      columnStyles: {
+        0: { halign: 'left', fontStyle: 'bold', cellWidth: 70 },
+        1: { halign: 'center', cellWidth: 20 },
+        2: { halign: 'right', cellWidth: 22 },
+        3: { halign: 'right', cellWidth: 22 },
+        4: { halign: 'center', cellWidth: 18 },
+        5: { halign: 'center', fontStyle: 'bold', cellWidth: 15 },
+        6: { halign: 'right', fontStyle: 'bold', cellWidth: 23 }
+      },
+      alternateRowStyles: {
+        fillColor: [254, 249, 195] // Intercalado mostaza/amarillo suave (#fef9c3)
+      },
+      didDrawPage: function (data) {
+        startY = data.cursor.y + 4;
+      }
+    });
+
+    startY = doc.lastAutoTable.finalY + 4;
+  }
+
+  // Descarga instantánea
+  doc.save(`Compras_Aprobadas_VillaZar_${new Date().toISOString().slice(0, 10)}.pdf`);
 }
   </script>
 </body>
