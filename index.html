@@ -882,6 +882,30 @@ select option {
   color: #64748B !important;
 }
 
+#approved-summary-box {
+  background: #1E1B4B !important; /* Fondo oscuro sólido */
+  padding: 18px !important;
+  border-radius: 12px !important;
+  border: 1px solid #312E81 !important;
+  margin-bottom: 18px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+}
+
+#approved-summary-box span {
+  color: #CBD5E1 !important;
+  font-weight: 600;
+}
+
+#approved-total-amount {
+  font-size: 1.8rem !important;
+  color: #38BDF8 !important; /* Texto celeste sólido y brillante */
+  font-weight: 800 !important;
+}
+
   </style>
 </head>
 <body>
@@ -1496,14 +1520,15 @@ select option {
     </div>
 
     <!-- TARJETA DE RESUMEN DE INVERSIÓN TOTAL -->
-    <div id="approved-summary-box" style="background: linear-gradient(135deg, rgba(106, 13, 173, 0.25), rgba(0, 213, 255, 0.15)); padding: 15px; border-radius: 10px; border: 1px solid var(--p3); margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-      <div>
-        <span style="font-size:0.85rem; color:var(--muted); display:block;">PRESUPUESTO TOTAL ESTIMADO DE COMPRA</span>
-        <strong id="approved-total-amount" style="font-size:1.6rem; color:#00d5ff; font-family:'Plus Jakarta Sans', sans-serif;">S/. 0.00</strong>
-      </div>
-      <div>
+    <!-- BUSCAR Y REEMPLAZAR ESTE BLOQUE EN HTML (#sec-compras-aprobadas) -->
+    <div id="approved-summary-box" style="background: #0F172A; padding: 18px; border-radius: 12px; border: 1px solid #1E293B; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);">
+    <div>
+        <span style="font-size:0.75rem; color:#94A3B8; display:block; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">Presupuesto Total Estimado de Compra</span>
+        <strong id="approved-total-amount" style="font-size:1.8rem; color:#38BDF8; font-family:'Plus Jakarta Sans', sans-serif; font-weight:800;">S/. 0.00</strong>
+    </div>
+    <div>
         <span class="badge badge-purple" id="approved-items-count">0 Productos enlistados</span>
-      </div>
+    </div>
     </div>
 
     <!-- CONTENEDOR DINÁMICO DONDE SE DIBUJARÁN LAS TABLAS POR CATEGORÍA -->
@@ -2542,30 +2567,41 @@ function renderSalesHistory() {
     if (closureTotalAmountEl) closureTotalAmountEl.innerHTML = `<span style="color:var(--muted);">S/. 0.00</span>`;
   } else {
     if (closureTotalAmountEl) {
-      closureTotalAmountEl.innerHTML = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 10px; text-align: left;">
-          <div style="background: rgba(16, 185, 129, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid var(--success);">
-            <span style="font-size:0.75rem; color:#a1a1aa; display:block; font-weight:600;">💵 EFECTIVO EN CAJA</span>
-            <span style="font-size:1.2rem; font-weight:800; color:var(--success);">S/. ${totalEfectivo.toFixed(2)}</span>
-          </div>
-          <div style="background: rgba(0, 213, 255, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid #00d5ff;">
-            <span style="font-size:0.75rem; color:#a1a1aa; display:block; font-weight:600;">📱 YAPE / APLICATIVO</span>
-            <span style="font-size:1.2rem; font-weight:800; color:#00d5ff;">S/. ${totalAplicativo.toFixed(2)}</span>
-          </div>
-          <div style="background: rgba(168, 85, 247, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid var(--p3);">
-            <span style="font-size:0.75rem; color:#a1a1aa; display:block; font-weight:600;">💰 VENTAS NETAS TOTALES</span>
-            <span style="font-size:1.2rem; font-weight:800; color:var(--p3);">S/. ${totalVentasActivas.toFixed(2)}</span>
-          </div>
-          <div style="background: rgba(239, 68, 68, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid var(--danger);">
-            <span style="font-size:0.75rem; color:#a1a1aa; display:block; font-weight:600;">❌ ANULADOS</span>
-            <span style="font-size:1.2rem; font-weight:800; color:var(--danger);">S/. ${totalVentasEliminadas.toFixed(2)}</span>
-          </div>
-          <div style="background: rgba(245, 158, 11, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid var(--warning);">
-            <span style="font-size:0.75rem; color:#a1a1aa; display:block; font-weight:600;">📈 MARGEN ESTIMADO</span>
-            <span style="font-size:1.2rem; font-weight:800; color:var(--warning);">S/. ${totalMargenGanancia.toFixed(2)}</span>
-          </div>
-        </div>
-      `;
+        closureTotalAmountEl.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 10px; text-align: left;">
+                
+                <!-- EFECTIVO EN CAJA (Verde Sólido pastel) -->
+                <div style="background: #D1FAE5; padding: 12px 14px; border-radius: 10px; border-left: 5px solid #059669; border: 1px solid #A7F3D0;">
+                <span style="font-size:0.75rem; color:#065F46; display:block; font-weight:700; text-transform:uppercase;">💵 Efectivo en Caja</span>
+                <span style="font-size:1.3rem; font-weight:800; color:#047857;">S/. ${totalEfectivo.toFixed(2)}</span>
+                </div>
+
+                <!-- YAPE / APLICATIVO (Celeste Sólido pastel) -->
+                <div style="background: #E0F2FE; padding: 12px 14px; border-radius: 10px; border-left: 5px solid #0284C7; border: 1px solid #BAE6FD;">
+                <span style="font-size:0.75rem; color:#075985; display:block; font-weight:700; text-transform:uppercase;">📱 Yape / Plin</span>
+                <span style="font-size:1.3rem; font-weight:800; color:#0369A1;">S/. ${totalAplicativo.toFixed(2)}</span>
+                </div>
+
+                <!-- VENTAS NETAS (Azul Sólido) -->
+                <div style="background: #DBEAFE; padding: 12px 14px; border-radius: 10px; border-left: 5px solid #2563EB; border: 1px solid #BFDBFE;">
+                <span style="font-size:0.75rem; color:#1E40AF; display:block; font-weight:700; text-transform:uppercase;">💰 Ventas Totales</span>
+                <span style="font-size:1.3rem; font-weight:800; color:#1D4ED8;">S/. ${totalVentasActivas.toFixed(2)}</span>
+                </div>
+
+                <!-- ANULADOS (Rojo Sólido pastel) -->
+                <div style="background: #FEE2E2; padding: 12px 14px; border-radius: 10px; border-left: 5px solid #DC2626; border: 1px solid #FECACA;">
+                <span style="font-size:0.75rem; color:#991B1B; display:block; font-weight:700; text-transform:uppercase;">❌ Anulados</span>
+                <span style="font-size:1.3rem; font-weight:800; color:#B91C1C;">S/. ${totalVentasEliminadas.toFixed(2)}</span>
+                </div>
+
+                <!-- MARGEN ESTIMADO (Ámbar / Amarillo Sólido) -->
+                <div style="background: #FEF3C7; padding: 12px 14px; border-radius: 10px; border-left: 5px solid #D97706; border: 1px solid #FDE68A;">
+                <span style="font-size:0.75rem; color:#92400E; display:block; font-weight:700; text-transform:uppercase;">📈 Margen Estimado</span>
+                <span style="font-size:1.3rem; font-weight:800; color:#B45309;">S/. ${totalMargenGanancia.toFixed(2)}</span>
+                </div>
+
+            </div>
+        `;
     }
   }
 }
