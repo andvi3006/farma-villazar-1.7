@@ -1075,7 +1075,9 @@ select option {
                 </button>
               </div>
             </div>
-            <button class="btn btn-success" style="width:100%; margin-top:15px; justify-content:center; padding:0.9rem;" onclick="processSale()"><i class="ri-printer-line"></i> Grabar e Imprimir Venta</button>
+            <button class="btn btn-success" style="width:100%; margin-top:15px; justify-content:center; padding:0.9rem;" onclick="processSale()">
+                <i class="ri-printer-line"></i> [F2] Grabar e Imprimir Venta
+            </button>
           </div>
         </div> <!-- FIN COLUMNA DERECHA -->
       </div>
@@ -2385,6 +2387,35 @@ function processSale() {
   
   initSystem();
 }
+
+
+// ==========================================
+// ATAJOS DE TECLADO GLOBALES DEL SISTEMA
+// ==========================================
+document.addEventListener('keydown', function(event) {
+  // 1. Atajo F2 para Grabar e Imprimir Venta en el módulo POS
+  if (event.key === 'F2') {
+    // Verificar si el módulo de Ventas/POS está visible
+    const secVentas = document.getElementById('sec-ventas');
+    if (secVentas && secVentas.classList.contains('active')) {
+      event.preventDefault(); // Previene la acción por defecto del navegador para F2
+      processSale(); // Ejecuta la función de grabar e imprimir
+    }
+  }
+
+  // 2. Tecla Escape (ESC) para cerrar modales o paneles desplegables
+  if (event.key === 'Escape') {
+    const prePanel = document.getElementById('pre-add-panel');
+    if (prePanel && prePanel.style.display !== 'none') {
+      prePanel.style.display = 'none';
+      const posInput = document.getElementById('pos-search');
+      if (posInput) posInput.focus();
+    }
+  }
+});
+
+
+
 
 function openReceiptModalDirect(sale) {
   const modal = document.getElementById("receipt-modal");
