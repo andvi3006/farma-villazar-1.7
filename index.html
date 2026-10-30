@@ -906,6 +906,31 @@ select option {
   font-weight: 800 !important;
 }
 
+
+/* --- CORRECCIÓN DESPLEGABLE BUSCADOR EN COMPRAS APROBADAS --- */
+#approved-search-box {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #008B99 !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 0 0 12px 12px !important;
+}
+
+#approved-search-box .predictive-item {
+  padding: 10px 14px !important;
+  color: #0F172A !important; /* Texto oscuro visible sobre fondo blanco */
+  border-bottom: 1px solid #F1F5F9 !important;
+  cursor: pointer !important;
+}
+
+#approved-search-box .predictive-item:hover {
+  background-color: #E6F7F8 !important; /* Resaltado verde/celeste suave */
+}
+
+#approved-search-box .predictive-item span {
+  color: #0F172A !important;
+}
+
+
   </style>
 </head>
 <body>
@@ -1938,8 +1963,12 @@ function handleSearch(val) {
 }
 
 // Navegación con flechas (▲/▼) y selección directa con Enter
+// Navegación avanzada con 4 flechas (▲/▼/◄/►) y selección con Enter
+// Navegación con flechas (▲/▼/◄/►) e inputs liberados
 function handleSearchKeyPress(event) {
   const sugBox = document.getElementById('search-box');
+  
+  // Si la lista desplegable NO está visible, permite la navegación normal del teclado
   if (!sugBox || sugBox.style.display === 'none') return;
 
   const items = sugBox.querySelectorAll('.predictive-item');
@@ -1953,12 +1982,26 @@ function handleSearchKeyPress(event) {
     event.preventDefault();
     selectedSearchIndex = (selectedSearchIndex - 1 + items.length) % items.length;
     updateSelectedItemHighlight(items);
+  } else if (event.key === 'ArrowRight') {
+    // Solo salta en la lista si hay ítems activos seleccionados
+    if (selectedSearchIndex >= 0) {
+      event.preventDefault();
+      selectedSearchIndex = Math.min(selectedSearchIndex + 3, items.length - 1);
+      updateSelectedItemHighlight(items);
+    }
+  } else if (event.key === 'ArrowLeft') {
+    // Solo salta en la lista si hay ítems activos seleccionados
+    if (selectedSearchIndex >= 0) {
+      event.preventDefault();
+      selectedSearchIndex = Math.max(selectedSearchIndex - 3, 0);
+      updateSelectedItemHighlight(items);
+    }
   } else if (event.key === 'Enter') {
     event.preventDefault();
     if (selectedSearchIndex >= 0 && selectedSearchIndex < items.length) {
       items[selectedSearchIndex].click();
     } else if (items.length > 0) {
-      items[0].click(); // Si pulsa Enter sin usar flechas, selecciona el primero
+      items[0].click(); // Si pulsa Enter sin mover flechas, elige el primero
     }
   }
 }
@@ -2392,18 +2435,32 @@ function processSale() {
 // ==========================================
 // ATAJOS DE TECLADO GLOBALES DEL SISTEMA
 // ==========================================
+// ==========================================
+// ATAJOS DE TECLADO GLOBALES DEL SISTEMA
+// ==========================================
 document.addEventListener('keydown', function(event) {
-  // 1. Atajo F2 para Grabar e Imprimir Venta en el módulo POS
-  if (event.key === 'F2') {
-    // Verificar si el módulo de Ventas/POS está visible
-    const secVentas = document.getElementById('sec-ventas');
-    if (secVentas && secVentas.classList.contains('active')) {
-      event.preventDefault(); // Previene la acción por defecto del navegador para F2
-      processSale(); // Ejecuta la función de grabar e imprimir
-    }
+  const secVentas = document.getElementById('sec-ventas');
+  const isVentasActive = secVentas && secVentas.classList.contains('active');
+
+  // 1. Atajo F1 para Seleccionar Método de Pago EFECTIVO
+  if (event.key === 'F1' && isVentasActive) {
+    event.preventDefault();
+    setPaymentMethod('efectivo');
   }
 
-  // 2. Tecla Escape (ESC) para cerrar modales o paneles desplegables
+  // 2. Atajo F3 para Seleccionar Método de Pago YAPE / PLIN
+  if (event.key === 'F3' && isVentasActive) {
+    event.preventDefault();
+    setPaymentMethod('yape');
+  }
+
+  // 3. Atajo F2 para Grabar e Imprimir Venta en el módulo POS
+  if (event.key === 'F2' && isVentasActive) {
+    event.preventDefault();
+    processSale();
+  }
+
+  // 4. Tecla Escape (ESC) para cerrar modales o paneles desplegables
   if (event.key === 'Escape') {
     const prePanel = document.getElementById('pre-add-panel');
     if (prePanel && prePanel.style.display !== 'none') {
@@ -4192,6 +4249,7 @@ function exportApprovedToPDF() {
       costUnit: `S/. ${costUnit.toFixed(2)}`,
       buyMode: prodObj.buyMode === 'Caja' ? 'Caja' : 'Unidad',
       qty: prodObj.qty,
+      subtotalNum: subtotalFila,
       subtotalFila: `S/. ${subtotalFila.toFixed(2)}`
     });
   });
@@ -4204,7 +4262,7 @@ function exportApprovedToPDF() {
     year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
   });
 
-  // Encabezado
+  // Encabezado principal
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.text("COMPRAS APROBADAS · BOTICA VILLAZAR", 10, 12);
@@ -4215,28 +4273,29 @@ function exportApprovedToPDF() {
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text(`TOTAL ESTIMADO: S/. ${totalPresupuestoGeneral.toFixed(2)}`, 200, 16, { align: "right" });
+  doc.text(`TOTAL GENERAL: S/. ${totalPresupuestoGeneral.toFixed(2)}`, 200, 16, { align: "right" });
 
   doc.setLineWidth(0.5);
   doc.line(10, 18, 200, 18);
 
   let startY = 22;
 
-  // Generar tablas vectoriales por Categoría
+  // Generar tablas por Categoría con Subtotal al final
   for (const cat in groupedByCat) {
     const items = groupedByCat[cat];
+    const subtotalCat = items.reduce((sum, i) => sum + i.subtotalNum, 0);
 
     // Título de la Categoría
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
-    doc.setFillColor(219, 234, 222); // Verde suave de fondo
+    doc.setFillColor(219, 234, 222); // Fondo verde suave
     doc.rect(10, startY, 190, 5, 'F');
     doc.setTextColor(0, 0, 0);
     doc.text(`CATEGORÍA: ${cat.toUpperCase()} (${items.length} ítems)`, 12, startY + 3.8);
 
     startY += 6;
 
-    // Filas para la tabla
+    // Filas de productos
     const tableBody = items.map(it => [
       it.desc,
       it.boxUnits,
@@ -4247,7 +4306,13 @@ function exportApprovedToPDF() {
       it.subtotalFila
     ]);
 
-    // Tabla ultra compacta y liviana
+    // Fila de Subtotal por Categoría
+    tableBody.push([
+      { content: `SUBTOTAL ${cat.toUpperCase()}:`, colSpan: 6, styles: { halign: 'right', fontStyle: 'bold', fillColor: [241, 245, 249] } },
+      { content: `S/. ${subtotalCat.toFixed(2)}`, styles: { halign: 'right', fontStyle: 'bold', fillColor: [241, 245, 249] } }
+    ]);
+
+    // Generación de tabla con jsPDF AutoTable
     doc.autoTable({
       startY: startY,
       head: [['PRODUCTO / MEDICAMENTO', 'UDS/CAJA', 'COSTO CAJA', 'COSTO UNIT.', 'MODO', 'CANT.', 'SUBTOTAL']],
@@ -4262,7 +4327,7 @@ function exportApprovedToPDF() {
         lineWidth: 0.1
       },
       headStyles: {
-        fillColor: [51, 65, 85], // Gris oscuro
+        fillColor: [51, 65, 85], // Fondo gris oscuro corporativo
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         halign: 'center'
@@ -4277,17 +4342,17 @@ function exportApprovedToPDF() {
         6: { halign: 'right', fontStyle: 'bold', cellWidth: 23 }
       },
       alternateRowStyles: {
-        fillColor: [254, 249, 195] // Intercalado mostaza/amarillo suave (#fef9c3)
+        fillColor: [254, 249, 195] // Fondo amarillito claro intercalado
       },
       didDrawPage: function (data) {
         startY = data.cursor.y + 4;
       }
     });
 
-    startY = doc.lastAutoTable.finalY + 4;
+    startY = doc.lastAutoTable.finalY + 6;
   }
 
-  // Descarga instantánea
+  // Descarga el PDF generado
   doc.save(`Compras_Aprobadas_VillaZar_${new Date().toISOString().slice(0, 10)}.pdf`);
 }
   </script>
